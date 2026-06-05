@@ -1,0 +1,126 @@
+"""Basic tests for AI Crawler v2."""
+
+import sys
+from pathlib import Path
+
+# Add project root
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from state import CrawlState, SeoMetadata, VerifyResult, CrawlEvent, make_state
+from knowledge import Knowledge, PromptStats, load_knowledge, save_knowledge
+
+
+def test_make_state():
+    state = make_state("https://youtube.com/watch?v=test123", keyword="hiking tips")
+    assert state.url == "https://youtube.com/watch?v=test123"
+    assert state.keyword == "hiking tips"
+    assert state.step.value == "pending"
+    assert len(state.events) == 0
+
+
+def test_state_json_roundtrip():
+    state = make_state("https://example.com", source="web", keyword="test")
+    state.raw_text = "Hello world"
+    state.article_md = "# Test Article"
+    state.seo = SeoMetadata(title_tag="Test Title", meta_description="A test")
+
+    json_str = state.to_json()
+    restored = CrawlState.from_json(json_str)
+
+    assert restored.url == state.url
+    assert restored.raw_text == state.raw_text
+    assert restored.seo.title_tag == "Test Title"
+
+
+def test_state_events():
+    state = make_state("https://example.com")
+    state.append_event("extract", True, "Got 500 chars")
+    state.append_event("rewrite", False, "LLM timeout", error="timeout")
+
+    assert len(state.events) == 2
+    assert state.events[0].success is True
+    assert state.events[1].success is False
+    assert state.events[1].data.get("error") == "timeout"
+
+
+def test_state_save_load(tmp_path):
+    state = make_state("https://example.com", keyword="test")
+    state.raw_text = "Some content"
+
+    path = tmp_path / "state.json"
+    state.save(path)
+
+    loaded = CrawlState.load(path)
+    assert loaded.url == state.url
+    assert loaded.raw_text == state.raw_text
+
+
+def test_knowledge_crawl_tracking():
+    k = Knowledge()
+    assert not k.was_crawled("https://example.com")
+
+    k.record_crawl("https://example.com")
+    assert k.was_crawled("https://example.com")
+    assert not k.was_crawled("https://other.com")
+
+
+def test_knowledge_failure_tracking():
+    k = Knowledge()
+    k.record_failure("https://bad.com", "403 Forbidden")
+    k.record_failure("https://bad.com", "403 Forbidden")
+
+    assert k.failure_count("https://bad.com") == 2
+    assert k.failure_count("https://good.com") == 0
+
+
+def test_knowledge_prompt_stats():
+    k = Knowledge()
+    k.record_quality("prompts/rewrite.md", 80)
+    k.record_quality("prompts/rewrite.md", 90)
+    k.record_quality("prompts/rewrite.md", 70)
+
+    stats = k.prompt_stats["prompts/rewrite.md"]
+    assert stats.count == 3
+    assert abs(stats.avg_score - 80.0) < 0.1
+
+
+def test_knowledge_best_prompt():
+    k = Knowledge()
+    # Not enough samples for any prompt
+    result = k.best_prompt_for("youtube", ["prompts/a.md", "prompts/b.md"])
+    assert result == "prompts/a.md"  # fallback to first
+
+    # Add enough samples
+    for score in [90, 85, 88]:
+        k.record_quality("prompts/b.md", score)
+
+    result = k.best_prompt_for("youtube", ["prompts/a.md", "prompts/b.md"])
+    assert result == "prompts/b.md"  # better avg
+
+
+def test_knowledge_json_roundtrip(tmp_path):
+    k = Knowledge()
+    k.record_crawl("https://a.com")
+    k.record_crawl("https://b.com")
+    k.record_failure("https://c.com", "timeout")
+    k.record_quality("prompts/test.md", 85)
+
+    path = tmp_path / "knowledge.json"
+    save_knowledge(k, path)
+
+    loaded = load_knowledge(path)
+    assert loaded.was_crawled("https://a.com")
+    assert loaded.was_crawled("https://b.com")
+    assert loaded.failure_count("https://c.com") == 1
+    assert loaded.prompt_stats["prompts/test.md"].avg_score == 85.0
+
+
+def test_last_verify_errors():
+    state = make_state("https://example.com")
+    assert state.last_verify_errors() == []
+
+    state.append_event("verify", False, "Failed",
+                       issues=["Low quality", "Missing FAQ"])
+    errors = state.last_verify_errors()
+    assert "Low quality" in errors
+    assert "Missing FAQ" in errors

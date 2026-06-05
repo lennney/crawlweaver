@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>{{ title_tag }}</title>
+<meta name="description" content="{{ meta_description }}">
+<meta name="keywords" content="{{ meta_keywords }}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{{ SITE_URL }}{{ url_slug }}">
+
+<!-- Open Graph -->
+<meta property="og:title" content="{{ title_tag }}">
+<meta property="og:description" content="{{ meta_description }}">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="{{ date_published }}">
+
+<!-- Structured Data -->
+<script type="application/ld+json">{{ howto_schema_json }}</script>
+	<script type="application/ld+json">{{ article_schema_json }}</script>
+<script type="application/ld+json">{{ breadcrumb_schema_json }}</script>
+{% if faq_schema_json %}
+<script type="application/ld+json">{{ faq_schema_json }}</script>
+{% endif %}
+
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #faf8f4;
+  font-family: 'DM Sans', sans-serif;
+  color: #2d3425;
+  line-height: 1.6;
+  scroll-behavior: smooth;
+}
+.topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2ddd5;
+  padding: 0 32px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-logo { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; color: #7a9e7e; }
+.topbar-logo span { color: #c8845a; }
+.topbar-nav { display: flex; gap: 24px; }
+.topbar-nav a { font-size: 13px; color: #7a7f6e; text-decoration: none; }
+.topbar-nav a:hover { color: #7a9e7e; }
+.hero {
+  background: linear-gradient(135deg, #e8f0e9 0%, #f5ede6 100%);
+  padding: 56px 48px 48px;
+  margin-bottom: 2rem;
+  border-radius: 0 0 2rem 2rem;
+}
+.hero-inner { max-width: 1080px; margin: 0 auto; }
+.article-category {
+  display: inline-flex;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #7a9e7e;
+  background: rgba(122, 158, 126, 0.15);
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+.article-title {
+  font-family: 'Lora', serif;
+  font-size: 38px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #2d3425;
+  max-width: 880px;
+  margin-bottom: 20px;
+}
+.article-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.meta-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #7a7f6e;
+  background: rgba(255,255,255,0.6);
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.8);
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 32px 56px; }
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 36px;
+  align-items: start;
+}
+.main-content { min-width: 0; }
+.breadcrumb {
+  font-size: 12px;
+  color: #aab09a;
+  margin: 20px 0 32px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e2ddd5;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.breadcrumb a { color: #7a9e7e; text-decoration: none; font-weight: 500; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb .current { color: #c8845a; }
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 32px 0 24px;
+}
+.info-card {
+  background: #ffffff;
+  border: 1px solid #e2ddd5;
+  border-radius: 12px;
+  padding: 18px 14px;
+  text-align: center;
+}
+.ic-icon { font-size: 22px; margin-bottom: 7px; display: block; }
+.ic-label { font-size: 10.5px; color: #aab09a; text-transform: uppercase; letter-spacing: 0.05em; }
+.ic-value { font-size: 13px; font-weight: 500; color: #2d3425; }
+.ic-value.green { color: #7a9e7e; }
+.ic-value.orange { color: #c8845a; }
+.section { scroll-margin-top: 80px; margin-bottom: 2.5rem; }
+h2 {
+  font-family: 'Lora', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: #2d3425;
+  margin-bottom: 18px;
+  border-left: 4px solid #7a9e7e;
+  padding-left: 14px;
+}
+h3 {
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 1rem 0 0.6rem;
+  color: #7a9e7e;
+}
+.project-block {
+  background: #ffffff;
+  border: 1px solid #e2ddd5;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s;
+}
+.project-block:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+.prose {
+  color: #5f6352;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 8px 0 12px;
+}
+.prose p {
+  margin-bottom: 12px;
+}
+.prose strong { color: #3d5a41; }
+.prose ul, .prose ol { padding-left: 20px; margin-bottom: 12px; }
+.prose li { margin-bottom: 6px; }
+.prose img { max-width: 100%; border-radius: 12px; margin: 16px 0; border: 1px solid #e2ddd5; }
+.technique-box {
+  background: #f5f9f8;
+  border-left: 3px solid #7a9e7e;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: #5f6352;
+}
+.technique-box ul, .technique-box ol { padding-left: 20px; }
+.technique-box li { margin-bottom: 6px; }
+.tip-box {
+  background: #e8f0e9;
+  border-left: 3px solid #7a9e7e;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  font-size: 13px;
+  color: #3e5a40;
+}
+.tip-label {
+  font-weight: 600;
+  color: #5c7e5e;
+  margin-bottom: 6px;
+}
+hr { border: none; border-top: 1px solid #e2ddd5; margin: 1.5rem 0; }
+.sidebar {
+  position: sticky;
+  top: 70px;
+  align-self: start;
+}
+.hero-cover {
+  display: block;
+  width: 100%;
+  max-width: 880px;
+  max-height: 460px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin: 16px 0 20px;
+  border: 1px solid #e2ddd5;
+}
+.toc-card {
+  background: #ffffff;
+  border: 1px solid #e2ddd5;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+.toc-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: #aab09a;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.toc-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2ddd5;
+}
+.toc-list { list-style: none; }
+.toc-list-item { margin-bottom: 2px; }
+.toc-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #7a7f6e;
+  text-decoration: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: all 0.1s;
+}
+.toc-link.level-2 { font-weight: 500; }
+.toc-link.level-3 { padding-left: 26px; font-size: 11px; }
+.toc-link:hover { background: #e8f0e9; color: #5c7e5e; }
+.toc-link.active { background: #e8f0e9; color: #7a9e7e; font-weight: 500; }
+.toc-dot { width: 5px; height: 5px; background: #c8ceb5; border-radius: 50%; }
+.toc-link.active .toc-dot { background: #7a9e7e; }
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.faq-item {
+  background: #ffffff;
+  border: 1px solid #e2ddd5;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.faq-question {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  color: #2d3425;
+}
+.faq-answer {
+  display: none;
+  padding: 0 20px 18px;
+  color: #6a6e5c;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.faq-item.open .faq-answer { display: block; }
+.faq-item.open .faq-question svg { transform: rotate(180deg); }
+
+
+@media (max-width: 780px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .article-title { font-size: 28px; }
+  .hero { padding: 36px 24px; }
+  .container { padding: 0 20px 48px; }
+  .topbar-nav { display: none; }
+}
+@media (max-width: 480px) {
+  .article-title { font-size: 22px; }
+  .hero { padding: 24px 16px; }
+  h2 { font-size: 20px; }
+  h3 { font-size: 13px; }
+  .prose { font-size: 13px; line-height: 1.6; }
+  .info-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <div class="topbar-logo">Make<span>DIY</span>Hub</div>
+  <div class="topbar-nav"><a href="/">Home</a><a href="/{{ category_slug }}">{{ category }}</a><a href="/about">About</a></div>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="article-category">{{ category }}</div>
+    <h1 class="article-title">{{ h1 }}</h1>
+    {% if cover_image %}
+    <img class="hero-cover" src="{{ cover_image }}" alt="{{ h1 }}" loading="lazy">
+    {% endif %}
+    <div class="article-meta">
+      <span class="meta-badge">{{ reading_time }} min read</span>
+      <span class="meta-badge">{{ difficulty }}</span>
+      {% if tags %}
+      {% for tag in tags %}
+      <span class="meta-badge">{{ tag }}</span>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="breadcrumb"><a href="/">Home</a> / <a href="/{{ category_slug }}">{{ category }}</a> / <span class="current">{{ h1 }}</span></div>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <span class="ic-icon">🛠️</span>
+      <span class="ic-label">Difficulty</span>
+      <span class="ic-value green">{{ difficulty }}</span>
+    </div>
+    <div class="info-card">
+      <span class="ic-icon">⏱️</span>
+      <span class="ic-label">Time</span>
+      <span class="ic-value">{{ estimated_time }}</span>
+    </div>
+    <div class="info-card">
+      <span class="ic-icon">💰</span>
+      <span class="ic-label">Cost</span>
+      <span class="ic-value orange">{{ estimated_cost }}</span>
+    </div>
+    <div class="info-card">
+      <span class="ic-icon">📋</span>
+      <span class="ic-label">Materials</span>
+      <span class="ic-value">{{ material_count }} items</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <main class="main-content">
+      {% for section in sections %}
+      <section class="section" id="{{ section.id }}">
+        <h2>{{ section.title }}</h2>
+        <div class="project-block">
+          {% if section.image %}
+          <img src="{{ section.image }}" alt="{{ section.title }}" loading="lazy" style="width:100%;max-width:800px;border-radius:12px;margin-bottom:16px;border:1px solid #e2ddd5;">
+          {% endif %}
+          <div class="prose">{{ section.body_html }}</div>
+        </div>
+      </section>
+      {% endfor %}
+
+      {% if faq %}
+      <section class="section" id="faq">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-list">
+          {% for item in faq %}
+          <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+            <div class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+              <span itemprop="name">{{ item.q }}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aab09a" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="faq-answer" itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+              <div itemprop="text">{{ item.a | safe }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if source_url and source_label %}
+      <section class="section" id="source">
+        <div class="project-block source-box">
+          <div class="prose">
+            This article is based on content from <strong>{{ source_label }}</strong>.
+            <a href="{{ source_url }}" rel="noopener noreferrer" target="_blank">View original source &rarr;</a>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+    </main>
+
+    <aside class="sidebar">
+      <div class="toc-card">
+        <div class="toc-title">Contents</div>
+        <ul class="toc-list" id="dynamic-toc"></ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+function buildTOC() {
+  const main = document.querySelector('.main-content');
+  if (!main) return;
+  const headings = main.querySelectorAll('h2');
+  const tocContainer = document.getElementById('dynamic-toc');
+  if (!tocContainer) return;
+  tocContainer.innerHTML = '';
+  headings.forEach(function(heading) {
+    if (!heading.id) {
+      heading.id = heading.innerText.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-');
+    }
+    var li = document.createElement('li');
+    li.className = 'toc-list-item';
+    var a = document.createElement('a');
+    a.href = '#' + heading.id;
+    a.className = 'toc-link level-2';
+    a.innerHTML = '<span class="toc-dot"></span>' + heading.innerText;
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    li.appendChild(a);
+    tocContainer.appendChild(li);
+  });
+  var observerOptions = { threshold: 0.3, rootMargin: '-20% 0px -30% 0px' };
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        var id = entry.target.id;
+        document.querySelectorAll('.toc-link').forEach(function(link) {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + id) link.classList.add('active');
+        });
+      }
+    });
+  }, observerOptions);
+  headings.forEach(function(h) { observer.observe(h); });
+}
+document.addEventListener('DOMContentLoaded', buildTOC);
+</script>
+</body>
+</html>

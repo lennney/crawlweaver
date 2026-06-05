@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title_tag }}</title>
+  <meta name="description" content="{{ meta_description }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@300;400;600&family=DM+Sans:wght@600;700&display=swap" rel="stylesheet">
+  {% if website_schema_json %}
+  <script type="application/ld+json">
+{{ website_schema_json | safe }}
+  </script>
+  {% endif %}
+  {% if organization_schema_json %}
+  <script type="application/ld+json">
+{{ organization_schema_json | safe }}
+  </script>
+  {% endif %}
+  {% if article_schema_json %}
+  <script type="application/ld+json">
+{{ article_schema_json | safe }}
+  </script>
+  {% endif %}
+  {% if faq_schema_json %}
+  <script type="application/ld+json">
+{{ faq_schema_json | safe }}
+  </script>
+  {% endif %}
+  {% if breadcrumb_schema_json %}
+  <script type="application/ld+json">
+{{ breadcrumb_schema_json | safe }}
+  </script>
+  {% endif %}
+  <style>
+    :root {
+      --bg: #faf9f6;
+      --banner-bg: #1c3a2f;
+      --banner-accent: #4a8c6a;
+      --text: #1a1a1a;
+      --text-muted: #666;
+      --link: #2d6a4f;
+      --link-hover: #1b4332;
+      --border: #ddd9d0;
+      --active: #2d6a4f;
+      --sidebar-width: 260px;
+      /* Label type colors */
+      --label-step: #2d6a4f;
+      --label-step-line: #4a8c6a;
+      --label-tip: #b45309;
+      --label-tip-line: #d97706;
+      --label-lessons: #991b1b;
+      --label-lessons-line: #dc2626;
+      --label-other: #475569;
+      --label-other-line: #64748b;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .banner {
+      width: 100%; height: 260px;
+      position: relative; overflow: hidden;
+      display: flex; align-items: flex-end;
+      padding: 0 56px 36px;
+      background: #1c3a2f;
+      {% if cover_image %}background-image: url({{ cover_image }});{% endif %}
+      background-size: cover;
+      background-position: center;
+    }
+    .banner-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(30,20,10,0.1) 0%, rgba(30,20,10,0.8) 100%);
+    }
+    .banner-inner { position: relative; z-index: 1; }
+    .banner h1 {
+      font-family: 'Lora', serif;
+      font-size: clamp(24px, 3.4vw, 42px);
+      font-weight: 600; color: #f4f1ea;
+      line-height: 1.2; margin-bottom: 12px;
+    }
+    .banner-meta {
+      font-size: 13px; color: rgba(244,241,234,0.55);
+      display: flex; gap: 20px;
+    }
+    .banner-meta span::before { content: '\00b7 '; }
+    .banner-meta span:first-child::before { content: ''; }
+    .page-wrap {
+      display: flex; max-width: 1160px;
+      margin: 0 auto; padding: 0 24px;
+    }
+    .sidebar {
+      width: var(--sidebar-width); flex-shrink: 0; padding: 40px 0 80px;
+      align-self: flex-start; position: sticky; top: 32px;
+      max-height: calc(100vh - 32px); overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .toc-label {
+      font-family: 'DM Sans', sans-serif; font-size: 15px;
+      font-weight: 700; color: var(--text); margin-bottom: 10px; padding-left: 14px;
+    }
+    .toc-nav { list-style: none; }
+    .toc-nav li { position: relative; }
+    .toc-nav a {
+      display: block; padding: 6px 14px; text-decoration: none;
+      border-left: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+    }
+    .toc-nav .toc-h2 a {
+      font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: #444;
+    }
+    .toc-nav .toc-h3 a {
+      font-family: 'Source Sans 3', sans-serif; font-size: 15px; font-weight: 400;
+      color: var(--text-muted); padding-left: 24px;
+    }
+    .toc-nav a:hover { color: var(--link); border-left-color: var(--border); }
+    .toc-nav a.active { color: var(--active); font-weight: 700; border-left-color: var(--active); }
+    .main { flex: 1; min-width: 0; padding: 40px 0 120px 48px; border-left: 1px solid var(--border); }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 6px; font-size: 13px;
+      color: var(--text-muted); margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .breadcrumb a { color: var(--link); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb-sep { color: #bbb; user-select: none; }
+    .breadcrumb-current { color: var(--text-muted); font-weight: 600; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+    .tag {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+      padding: 4px 10px; background: #edf3ef; border: 1px solid #c4d9cc;
+      border-radius: 100px; color: #2d6a4f; text-transform: uppercase;
+    }
+    .content-section { margin-bottom: 44px; }
+    h2 {
+      font-family: 'DM Sans', sans-serif; font-size: 26px; font-weight: 700;
+      color: var(--text); margin-bottom: 14px; scroll-margin-top: 32px;
+    }
+    h3 {
+      font-family: 'DM Sans', sans-serif; font-size: 17px; font-weight: 700;
+      color: var(--text); margin: 32px 0 12px; scroll-margin-top: 32px;
+    }
+    p { font-size: 16px; color: #333; margin-bottom: 16px; max-width: 680px; }
+    ul, ol { padding-left: 20px; margin-bottom: 16px; max-width: 680px; }
+    li { font-size: 16px; color: #333; margin-bottom: 6px; }
+    a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+    a:hover { color: var(--link-hover); }
+    .callout {
+      background: #eaf3ee; border-left: 4px solid var(--banner-accent);
+      border-radius: 0 8px 8px 0; padding: 16px 20px;
+      margin: 24px 0; max-width: 680px; font-size: 15px; color: #2d4a3e;
+    }
+    .faq-section { margin-top: 40px; }
+    .faq-item { margin-bottom: 20px; }
+    .faq-item h3 { font-size: 16px; }
+    .faq-item h3 { margin-top: 0; color: var(--link); }
+    .faq-item p { font-size: 15px; }
+    /* Step-by-step guide styling */
+    .step-section {
+      margin-bottom: 36px; padding: 28px 32px 8px;
+      background: #f4f6f4; border-radius: 12px;
+      border-left: 4px solid var(--label-step-line);
+      break-inside: avoid;
+    }
+    .step-section:last-child { margin-bottom: 44px; }
+    .step-badge {
+      display: inline-block;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 2px 10px; border-radius: 4px;
+      margin-bottom: 8px; line-height: 1.5;
+    }
+    /* Label type colors */
+    .label-step .step-badge { color: #2d6a4f; background: #e0eee6; }
+    .label-step { border-left-color: var(--label-step-line); }
+    .label-tip .step-badge { color: #b45309; background: #fef3cd; }
+    .label-tip { border-left-color: var(--label-tip-line); }
+    .label-lessons .step-badge { color: #991b1b; background: #fee2e2; }
+    .label-lessons { border-left-color: var(--label-lessons-line); }
+    .label-other .step-badge { color: #475569; background: #f1f5f9; }
+    .label-other { border-left-color: var(--label-other-line); }
+    .step-section h2 {
+      margin-bottom: 12px; padding-top: 0;
+      font-size: clamp(18px, 1.4vw, 22px);
+    }
+    .step-section p, .step-section ul, .step-section ol {
+      max-width: 640px;
+    }
+
+    /* Plain H2 sections (non-stepped) */
+    .section-plain {
+      padding-left: 20px;
+      border-left: 2px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .section-plain:hover { border-left-color: #bbb; }
+
+    .back-to-top {
+      position: fixed; bottom: 36px; right: 36px;
+      background: var(--banner-bg); color: #f0ede6; border: none;
+      border-radius: 6px; padding: 10px 16px;
+      font-family: 'Source Sans 3', sans-serif; font-size: 13px;
+      font-weight: 600; cursor: pointer; display: flex;
+      align-items: center; gap: 6px; opacity: 0;
+      transform: translateY(12px); transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; z-index: 100;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    }
+    .back-to-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .back-to-top:hover { background: var(--link); }
+    .share-sidebar { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .share-sidebar-label {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+      color: var(--text-muted); margin-bottom: 10px; padding-left: 14px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .share-sidebar-btns { display: flex; gap: 6px; padding-left: 14px; }
+    .share-sidebar-btns a {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #edf3ef; color: #2d6a4f; text-decoration: none;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .share-sidebar-btns a:hover { background: #2d6a4f; color: #fff; transform: scale(1.08); }
+    .share-sidebar-btns svg { width: 16px; height: 16px; fill: currentColor; }
+    .share-bottom {
+      display: flex; align-items: center; gap: 12px; margin: 40px 0 0;
+      padding-top: 32px; border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .share-bottom-label {
+      font-size: 14px; font-weight: 600; color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .share-bottom a {
+      display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+      border-radius: 6px; background: #edf3ef; color: #2d6a4f;
+      text-decoration: none; font-size: 13px; font-weight: 600;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .share-bottom a:hover { background: #2d6a4f; color: #fff; transform: scale(1.04); }
+    .share-bottom svg { width: 15px; height: 15px; fill: currentColor; }
+    .post-nav {
+      display: flex; gap: 20px; margin: 40px 0 0; padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+    .post-nav-link {
+      flex: 1; text-decoration: none; padding: 20px;
+      border-radius: 8px; background: #f4f1ea;
+      border: 1px solid var(--border); transition: background 0.15s, border-color 0.15s;
+    }
+    .post-nav-link:hover { background: #edf3ef; border-color: #c4d9cc; }
+    .post-nav-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px;
+    }
+    .post-nav-title {
+      font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600;
+      color: var(--text); line-height: 1.3;
+    }
+    .post-nav-link:hover .post-nav-title { color: var(--link); }
+    .post-nav-link.prev { text-align: left; }
+    .post-nav-link.next { text-align: right; }
+    .related-posts {
+      margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border);
+    }
+    .related-posts h2 { font-size: 20px; margin-bottom: 20px; }
+    .related-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px; max-width: 100%;
+    }
+    .related-card {
+      text-decoration: none; padding: 18px; border-radius: 8px;
+      background: #f4f1ea; border: 1px solid var(--border);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .related-card:hover { background: #edf3ef; border-color: #c4d9cc; }
+    .related-card-tag {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--banner-accent); margin-bottom: 6px;
+    }
+    .related-card-title {
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+      color: var(--text); line-height: 1.3;
+    }
+    .related-card:hover .related-card-title { color: var(--link); }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { padding: 32px 0; border-left: none; }
+      .page-wrap { padding: 0 16px; }
+      .banner { padding: 0 24px 28px; height: 200px; }
+      .step-section { padding: 20px 20px 8px; }
+      .step-section h2 { font-size: 18px; }
+      .section-plain { padding-left: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- BANNER -->
+<header class="banner">
+  <div class="banner-overlay"></div>
+  <div class="banner-inner">
+    <h1>{{ h1 }}</h1>
+    <div class="banner-meta">
+      <span>{{ generated_at }}</span>
+      <span>{{ category }}</span>
+      <span>{{ content_type }}</span>
+      <span>{{ reading_time_minutes }} min read</span>
+    </div>
+  </div>
+</header>
+
+<!-- PAGE WRAP -->
+<div class="page-wrap">
+
+  <!-- SIDEBAR TOC -->
+  <aside class="sidebar">
+    <nav class="sidebar-inner" aria-label="Table of Contents">
+      <div class="toc-label">Contents</div>
+      <ul class="toc-nav" id="toc">
+        <li class="toc-h2"><a href="#intro">Introduction</a></li>
+          {% for h3 in intro_h3s %}
+        <li class="toc-h3"><a href="#{{ h3.id }}">{{ h3.text }}</a></li>
+          {% endfor %}
+        {% for section in sections %}
+        <li class="toc-h2"><a href="#{{ section.id }}">{{ section.h2 }}</a></li>
+          {% for h3 in section.h3s %}
+        <li class="toc-h3"><a href="#{{ h3.id }}">{{ h3.text }}</a></li>
+          {% endfor %}
+        {% endfor %}
+        {% if faq %}
+        <li class="toc-h2"><a href="#faq">FAQ</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    <div class="share-sidebar">
+      <div class="share-sidebar-label">Share</div>
+      <div class="share-sidebar-btns">
+        <a href="https://twitter.com/intent/tweet?text={{ h1 | urlencode }}&url={{ article_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share on Twitter">
+          <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="https://www.facebook.com/sharer/sharer.php?u={{ article_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
+          <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        </a>
+        <a href="mailto:?subject={{ h1 | urlencode }}&body={{ article_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share via Email">
+          <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <section class="content-section" id="intro">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="breadcrumb-sep">&rsaquo;</span>
+        <a href="/{{ breadcrumb.category_path }}">{{ breadcrumb.category_label }}</a>
+        <span class="breadcrumb-sep">&rsaquo;</span>
+        <a href="/{{ breadcrumb.type_path }}">{{ breadcrumb.type_label }}</a>
+        <span class="breadcrumb-sep">&rsaquo;</span>
+        <span class="breadcrumb-current">{{ breadcrumb.item }}</span>
+      </nav>
+
+      {% if tags %}
+      <div class="tags">
+        {% for tag in tags %}
+        <span class="tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {{ intro_html | safe }}
+    </section>
+
+    {% for section in sections %}
+    {% set step_cls = ' step-section' if is_step_guide and section.step_number else '' %}
+    {% set label_cls = ' label-' + (section.label_category | default('other')) if is_step_guide and section.step_number else '' %}
+    {% set plain_cls = ' section-plain' if not (is_step_guide and section.step_number) else '' %}
+    <section class="content-section{{ step_cls }}{{ label_cls }}{{ plain_cls }}" id="{{ section.id }}">
+      {% if is_step_guide and section.step_number %}
+      <span class="step-badge">{{ section.step_label }} {{ section.step_number }}</span>
+      <h2>{{ section.h2_clean }}</h2>
+      {% else %}
+      <h2>{{ section.h2 }}</h2>
+      {% endif %}
+      {{ section.body_html | safe }}
+    </section>
+    {% endfor %}
+
+    {% if faq %}
+    <section class="content-section faq-section" id="faq">
+      <h2>Frequently Asked Questions</h2>
+      {% for item in faq %}
+      <div class="faq-item">
+        <h3>{{ item.q }}</h3>
+        <p>{{ item.a }}</p>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- SHARE BOTTOM -->
+    <div class="share-bottom">
+      <span class="share-bottom-label">Share this guide</span>
+      <a href="https://twitter.com/intent/tweet?text={{ h1 | urlencode }}&url={{ article_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share on Twitter">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        Twitter
+      </a>
+      <a href="https://www.facebook.com/sharer/sharer.php?u={{ article_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
+        <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Facebook
+      </a>
+      <a href="mailto:?subject={{ h1 | urlencode }}&body={{ article_url | urlencode }}" target="_blank" rel="noopener" aria-label="Share via Email">
+        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        Email
+      </a>
+    </div>
+
+    {% if prev_post or next_post %}
+    <!-- POST NAVIGATION -->
+    <div class="post-nav">
+      {% if prev_post %}
+      <a href="{{ prev_post.url }}" class="post-nav-link prev">
+        <div class="post-nav-label">&larr; Previous</div>
+        <div class="post-nav-title">{{ prev_post.title }}</div>
+      </a>
+      {% endif %}
+      {% if next_post %}
+      <a href="{{ next_post.url }}" class="post-nav-link next">
+        <div class="post-nav-label">Next &rarr;</div>
+        <div class="post-nav-title">{{ next_post.title }}</div>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if related_posts %}
+    <!-- RELATED POSTS -->
+    <div class="related-posts">
+      <h2>Related Articles</h2>
+      <div class="related-grid">
+        {% for post in related_posts %}
+        <a href="{{ post.url }}" class="related-card">
+          <div class="related-card-tag">{{ post.category }}</div>
+          <div class="related-card-title">{{ post.title }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    
+  </main>
+</div>
+
+<!-- BACK TO TOP -->
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  &uarr; Back to Top
+</button>
+
+<script>
+const btn = document.getElementById('backToTop');
+const tocLinks = document.querySelectorAll('.toc-nav a');
+const sidebar = document.querySelector('.sidebar');
+let activeId = '';
+let ticking = false;
+
+// Recalculated on each tick to handle layout shift (font loading, etc.)
+function findActiveSection(scrollY) {
+  const els = document.querySelectorAll('.content-section[id]');
+  let id = els[0]?.id || 'intro';
+  for (let i = els.length - 1; i >= 0; i--) {
+    if (scrollY >= els[i].offsetTop) { id = els[i].id; break; }
+  }
+  return id;
+}
+
+function updateToc() {
+  const scrollY = window.scrollY + 120;
+  const active = findActiveSection(scrollY);
+
+  if (active !== activeId) {
+    activeId = active;
+    tocLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + active);
+    });
+    // Scroll sidebar so active item stays roughly in the upper third
+    const activeLink = document.querySelector('.toc-nav a.active');
+    if (activeLink) {
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const linkRect = activeLink.getBoundingClientRect();
+      sidebar.scrollTop += linkRect.top - sidebarRect.top - sidebarRect.height * 0.08;
+    }
+  }
+
+  btn.classList.toggle('visible', window.scrollY > 400);
+  ticking = false;
+}
+
+function onScroll() {
+  if (!ticking) {
+    requestAnimationFrame(() => updateToc());
+    ticking = true;
+  }
+}
+
+window.addEventListener('scroll', onScroll, { passive: true });
+window.addEventListener('resize', onScroll, { passive: true });
+// Also recalculate once fonts have loaded (handles layout shift)
+document.fonts.ready.then(() => updateToc());
+// Initial activation
+updateToc();
+</script>
+
+</body>
+</html>
