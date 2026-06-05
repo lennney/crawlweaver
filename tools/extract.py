@@ -46,16 +46,14 @@ def _extract_youtube(state: CrawlState):
         from youtube_transcript_api import YouTubeTranscriptApi
 
         video_id = _youtube_id(url)
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        api = YouTubeTranscriptApi()
 
-        # Try preferred language first, then fallback
-        try:
-            transcript = transcript_list.find_transcript(["en"])
-        except Exception:
-            transcript = transcript_list.find_manually_created_transcript(["zh-Hans", "zh", "en"])
-
-        entries = transcript.fetch()
-        state.raw_text = " ".join(e.get("text", "") for e in entries if e.get("text"))
+        # New API (v1.x): api.fetch(video_id, languages=[...])
+        # Returns iterable of FetchedTranscriptSnippet with .text attribute
+        transcript = api.fetch(video_id, languages=["en", "zh-Hans", "zh"])
+        state.raw_text = " ".join(
+            snippet.text for snippet in transcript if snippet.text
+        )
         state.title = f"YouTube Video {video_id}"
         state.source_metadata = {"video_id": video_id, "method": "transcript_api"}
         return

@@ -1,0 +1,14 @@
+{
+  "crawled_urls": [
+    "https://en.wikipedia.org/wiki/Artificial_intelligence"
+  ],
+  "site_patterns": {},
+  "failure_log": [],
+  "prompt_stats": {
+    "prompts/rewrite.md": {
+      "avg_score": 85.0,
+      "count": 1,
+      "total_score": 85.0
+    }
+  }
+}
