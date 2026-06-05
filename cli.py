@@ -27,6 +27,10 @@ def main():
 
     # crawl command
     p_crawl = sub.add_parser("crawl", help="Crawl a URL")
+
+    # setup command
+    p_setup = sub.add_parser("setup", help="First-run setup (YouTube cookies)")
+    p_setup.add_argument("--check", action="store_true", help="Check if cookies are valid")
     p_crawl.add_argument("url", help="URL to crawl")
     p_crawl.add_argument("--source", default="youtube", choices=["youtube", "web", "reddit"])
     p_crawl.add_argument("--keyword", default="", help="Target keyword")
@@ -54,6 +58,9 @@ def main():
 
     if args.command == "crawl":
         cmd_crawl(args)
+    elif args.command == "setup":
+        from setup import cmd_setup
+        cmd_setup(args)
     elif args.command == "knowledge":
         cmd_knowledge(args)
     else:
