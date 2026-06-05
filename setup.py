@@ -39,7 +39,7 @@ def cmd_setup(args):
     print("      yt-dlp --cookies-from-browser chrome --cookies yt_cookies.txt \\")
     print("             'https://www.youtube.com' --skip-download")
     print("      然后上传到服务器：")
-    print(f"      scp yt_cookies.txt hermes@<server-ip>:{COOKIES_PATH}")
+    print(f"  scp cookies.txt <user>@<server>:{COOKIES_PATH}")
     print()
     print("  [2] 从 Firefox 导出")
     print("      yt-dlp --cookies-from-browser firefox --cookies yt_cookies.txt \\")
@@ -56,7 +56,7 @@ def cmd_setup(args):
         print(f"  yt-dlp --cookies-from-browser {browser} --cookies yt_cookies.txt \\")
         print(f"         'https://www.youtube.com' --skip-download")
         print(f"\n然后上传到服务器：")
-        print(f"  scp yt_cookies.txt hermes@<server-ip>:{COOKIES_PATH}")
+        print(f"  scp cookies.txt <user>@<server>:{COOKIES_PATH}")
         print(f"\n上传完成后，运行: python cli.py setup --check")
     elif choice == "3":
         path = input("输入 cookies 文件路径: ").strip()

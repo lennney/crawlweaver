@@ -80,7 +80,7 @@ def cmd_crawl(args):
         print("           'https://www.youtube.com' --skip-download")
         print()
         print("  然后上传到服务器：")
-        print(f"    scp cookies.txt hermes@<server>:{COOKIES_PATH}")
+        print(f"    scp cookies.txt <user>@<server>:{COOKIES_PATH}")
         print()
         print("  或直接运行引导：")
         print("    python cli.py setup")
