@@ -69,6 +69,24 @@ def main():
 
 def cmd_crawl(args):
     """Execute a crawl."""
+    from setup import check_cookies, COOKIES_PATH
+    if args.source == "youtube" and not _has_cookies():
+        print("⚠️  YouTube 爬取需要 cookies（云服务器 IP 被 YouTube 封锁）")
+        print()
+        print("首次使用，请先导出你的 YouTube cookies：")
+        print()
+        print("  在你的电脑上运行：")
+        print("    yt-dlp --cookies-from-browser chrome --cookies cookies.txt \\")
+        print("           'https://www.youtube.com' --skip-download")
+        print()
+        print("  然后上传到服务器：")
+        print(f"    scp cookies.txt hermes@<server>:{COOKIES_PATH}")
+        print()
+        print("  或直接运行引导：")
+        print("    python cli.py setup")
+        print()
+        sys.exit(1)
+
     knowledge = load_knowledge(args.knowledge)
     llm = LLM()
 
@@ -115,6 +133,16 @@ def cmd_crawl(args):
     for evt in state.events:
         icon = "+" if evt.success else "x"
         print(f"  [{icon}] {evt.tool}: {evt.message}")
+
+
+def _has_cookies() -> bool:
+    """Check if any valid cookies file exists."""
+    from setup import COOKIES_PATH
+    candidates = [
+        COOKIES_PATH,
+        Path.home() / "yt_cookies.txt",
+    ]
+    return any(c.exists() and c.stat().st_size > 200 for c in candidates)
 
 
 def cmd_knowledge(args):
