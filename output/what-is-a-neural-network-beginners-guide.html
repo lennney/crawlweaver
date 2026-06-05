@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <meta name="description" content="Discover what a neural network is and how machines learn to see. This beginner's guide explains the structure of neural networks using handwritten digit recogni">
+  <meta property="og:title" content="">
+  <meta property="og:description" content="Discover what a neural network is and how machines learn to see. This beginner's guide explains the structure of neural networks using handwritten digit recogni">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="">
+  <meta name="author" content="">
+  
+  
+  <style>
+    :root {
+      --color-primary: #2d6a4f;
+      --color-secondary: #40916c;
+      --color-text: #333;
+      --color-muted: #666;
+      --color-bg: #f8f9fa;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --max-width: 800px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: var(--color-text);
+    }
+    h1 { font-size: 2em; margin-bottom: 0.3em; }
+    h2 { color: var(--color-primary); margin-top: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    h3 { color: var(--color-secondary); }
+    .meta { color: var(--color-muted); font-size: 0.9em; margin-bottom: 2em; }
+    .meta span + span::before { content: ' | '; }
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      margin: 1.5em 0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .video-container iframe {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    .faq {
+      background: var(--color-bg);
+      padding: 1.5em;
+      border-radius: 8px;
+      margin: 2em 0;
+    }
+    .faq h2 { margin-top: 0; }
+    .tags { margin: 1.5em 0; }
+    .tags span {
+      background: #e9ecef;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      margin-right: 4px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+    blockquote {
+      border-left: 3px solid var(--color-primary);
+      padding-left: 1em;
+      color: #555;
+      margin: 1em 0;
+    }
+    img { max-width: 100%; height: auto; border-radius: 4px; }
+    a { color: var(--color-primary); }
+    a:hover { color: var(--color-secondary); }
+    footer {
+      margin-top: 3em;
+      padding-top: 1em;
+      border-top: 1px solid #eee;
+      color: #888;
+      font-size: 0.85em;
+    }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.5em; }
+    }
+  </style>
+</head>
+<body>
+  <h1></h1>
+
+  <div class="meta">
+    <span>By </span>
+    
+    <span> words</span>
+    <span> min read</span>
+    
+  </div>
+
+  
+
+  <h1>What Is a Neural Network? A Beginner’s Guide to How Machines Learn to See</h1>
+<h2>Introduction</h2>
+<p>Imagine looking at a blurry, pixelated image of the number "3" that's only 28 by 28 pixels. Even though it's sloppily written and extremely low-resolution, your brain recognizes it instantly. What's even more impressive is that you can recognize a "3" written in many different styles, even when every single pixel value changes from one image to the next. Your visual cortex somehow resolves all these variations into the same idea while also telling them apart from other digits.</p>
+<p>Now imagine trying to write a computer program that does the same thing: take a grid of 28x28 pixels and output a single number between 0 and 9 telling you which digit it sees. That task goes from comically trivial to dauntingly difficult. This is where neural networks come in. In this beginner guide, we'll explore what a neural network actually is—not as a buzzword, but as a piece of math. We'll focus on the structure of neural networks, and a follow-up will tackle how they learn.</p>
+<h2>Step 1: Understand the Problem We're Solving</h2>
+<p>The classic example we'll use is handwritten digit recognition. A neural network takes in a grid of 28x28 pixels—that's 784 individual pixel values—and outputs a single number between 0 and 9, telling you what digit it thinks the image represents.</p>
+<p>This is a perfect starting point because it's simple enough to understand but complex enough to show how neural networks work. Even the simplest, plain vanilla form of a neural network can learn to recognize handwritten digits. That's a pretty cool thing for a computer to do. And along the way, you'll also see where this approach falls short of some hopes we might have for it.</p>
+<h2>Step 2: Understand Where the Name Comes From</h2>
+<p>As the name suggests, neural networks are inspired by the brain. But let's break that down carefully. What are the "neurons" in a neural network, and in what sense are they "linked together"? </p>
+<p>Right now, when we say "neuron," we're talking about a simple mathematical unit—not a biological brain cell. These artificial neurons are connected to each other in layers, and information flows from one layer to the next. The brain analogy helps us think about how many simple processing units can work together to solve complex problems.</p>
+<h2>Step 3: Know That We're Starting Simple</h2>
+<p>There are many, many variants of neural networks, and in recent years there's been a boom in research toward these variants. But for beginners, we're going to look at the simplest, plain vanilla form with no added frills. </p>
+<p>This is a necessary prerequisite for understanding any of the more powerful modern variants. Trust me, this simple version still has plenty of complexity for us to wrap our minds around. If you can understand this foundation, you'll be ready to explore more advanced concepts later.</p>
+<h2>Step 4: Visualize What the Network Is Doing</h2>
+<p>The key is to think of a neural network not as a mysterious black box, but as a piece of math. Each neuron takes in some numbers, performs a simple calculation, and passes the result to the next layer of neurons. </p>
+<p>When you hear about a neural network "learning," what it really means is that the network is adjusting the connections between its neurons based on examples. In the case of digit recognition, it looks at thousands of labeled images of digits and gradually figures out which patterns of pixels correspond to which numbers.</p>
+<h2>Step 5: Recognize the Motivation</h2>
+<p>You've probably heard about machine learning and neural networks being important to the present and the future. The goal here is to help you feel like the structure itself is motivated—meaning you understand <em>why</em> it's built the way it is, not just what buzzwords to throw around.</p>
+<p>When you see a blurry, low-resolution "3" and your brain recognizes it effortlessly, that's the kind of ability we're trying to give computers. And while a simple neural network won't match the human brain's flexibility, it's a powerful step in that direction.</p>
+<h2>Frequently Asked Questions</h2>
+<p><strong>Q: What does a neural network actually do with the 28x28 pixel grid?</strong>
+A: It takes in all 784 pixel values as input and processes them through layers of artificial neurons to output a single number between 0 and 9, identifying which digit it sees.</p>
+<p><strong>Q: Are neural networks exactly like the human brain?</strong>
+A: No. Neural networks are <em>inspired</em> by the brain, but they use simple mathematical units (artificial neurons) rather than biological brain cells. The analogy helps us think about how many simple units can work together.</p>
+<p><strong>Q: What does it mean when a neural network "learns"?</strong>
+A: Learning means the network adjusts the connections between its neurons based on examples. It looks at labeled data (like images of digits with their correct labels) and gradually improves its ability to make correct predictions.</p>
+<p><strong>Q: Is this simple neural network as powerful as modern ones?</strong>
+A: No. This is the simplest, plain vanilla form with no added frills. It's a necessary foundation for understanding more powerful modern variants, but it has limitations and falls short of some hopes we might have for it.</p>
+<p><strong>Q: Why use handwritten digit recognition as an example?</strong>
+A: It's a classic example for introducing neural networks because the problem is simple enough to understand but complex enough to demonstrate how neural networks work. Even this basic version can learn to recognize digits.</p>
+<hr />
+<p>This article is based on: "But what is a neural network?" by 3Blue1Brown<br />
+Source URL: https://www.youtube.com/watch?v=aircAruvnKk<br />
+Last accessed: October 2023<br />
+All rights to the original content belong to the source creator.</p>
+
+  
+  <section class="faq">
+    <h2>Frequently Asked Questions</h2>
+    <h2>Frequently Asked Questions</h2>
+<p><strong>Q: What does a neural network actually do with the 28x28 pixel grid?</strong>
+A: It takes in all 784 pixel values as input and processes them through layers of artificial neurons to output a single number between 0 and 9, identifying which digit it sees.</p>
+<p><strong>Q: Are neural networks exactly like the human brain?</strong>
+A: No. Neural networks are <em>inspired</em> by the brain, but they use simple mathematical units (artificial neurons) rather than biological brain cells. The analogy helps us think about how many simple units can work together.</p>
+<p><strong>Q: What does it mean when a neural network "learns"?</strong>
+A: Learning means the network adjusts the connections between its neurons based on examples. It looks at labeled data (like images of digits with their correct labels) and gradually improves its ability to make correct predictions.</p>
+<p><strong>Q: Is this simple neural network as powerful as modern ones?</strong>
+A: No. This is the simplest, plain vanilla form with no added frills. It's a necessary foundation for understanding more powerful modern variants, but it has limitations and falls short of some hopes we might have for it.</p>
+<p><strong>Q: Why use handwritten digit recognition as an example?</strong>
+A: It's a classic example for introducing neural networks because the problem is simple enough to understand but complex enough to demonstrate how neural networks work. Even this basic version can learn to recognize digits.</p>
+<hr />
+<p>This article is based on: "But what is a neural network?" by 3Blue1Brown<br />
+Source URL: https://www.youtube.com/watch?v=aircAruvnKk<br />
+Last accessed: October 2023<br />
+All rights to the original content belong to the source creator.</p>
+  </section>
+  
+
+  
+
+  <footer>
+    
+    <p>&copy;  </p>
+  </footer>
+</body>
+</html>

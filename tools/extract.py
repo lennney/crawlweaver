@@ -7,6 +7,7 @@ No LLM involved — pure scraping.
 import logging
 import re
 import subprocess
+from pathlib import Path
 from typing import Any
 
 from state import CrawlState, Source, Step
@@ -60,21 +61,49 @@ def _extract_youtube(state: CrawlState):
     except Exception as e:
         logger.warning(f"Transcript API failed: {e}, trying yt-dlp")
 
-    # Strategy 2: yt-dlp subtitle download
+    # Strategy 2: yt-dlp with cookies
     try:
-        result = subprocess.run(
-            ["yt-dlp", "--skip-download", "--write-auto-sub", "--sub-lang", "en,zh",
-             "--sub-format", "txt", "-o", "/tmp/yt_%(id)s", url],
-            capture_output=True, text=True, timeout=60,
-        )
+        import glob as _glob
+        # Look for cookies file — multiple possible locations
+        cookies_path = None
+        for candidate in [
+            Path(__file__).parent.parent / "yt_cookies.txt",
+            Path(__file__).parent.parent / "cookies.txt",
+            Path.home() / "yt_cookies.txt",
+        ]:
+            if candidate.exists() and candidate.stat().st_size > 200:
+                cookies_path = str(candidate)
+                break
+
+        cmd = [
+            "yt-dlp", "--skip-download", "--write-auto-sub",
+            "--sub-lang", "en,zh", "--sub-format", "vtt/best",
+            "-o", "/tmp/yt_%(id)s",
+        ]
+        if cookies_path:
+            cmd.extend(["--cookies", cookies_path])
+            logger.info(f"Using cookies: {cookies_path}")
+        else:
+            # No cookies — try android client trick
+            cmd.extend(["--extractor-args", "youtube:player_client=android"])
+            logger.warning("No cookies file found, trying android client")
+
+        cmd.append(url)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         video_id = _youtube_id(url)
         import glob
-        subs = glob.glob(f"/tmp/yt_{video_id}*.txt")
+        subs = glob.glob(f"/tmp/yt_{video_id}*.vtt") + glob.glob(f"/tmp/yt_{video_id}*.txt")
         if subs:
-            state.raw_text = open(subs[0]).read()
+            raw = open(subs[0]).read()
+            # If VTT format, strip timestamps and headers
+            if subs[0].endswith(".vtt"):
+                raw = _parse_vtt(raw)
+            state.raw_text = raw
             state.title = f"YouTube Video {video_id}"
-            state.source_metadata = {"video_id": video_id, "method": "yt-dlp"}
+            state.source_metadata = {"video_id": video_id, "method": "yt-dlp", "cookies": bool(cookies_path)}
             return
+        else:
+            logger.warning(f"yt-dlp produced no subtitles. stderr: {result.stderr[:200]}")
     except Exception as e:
         logger.warning(f"yt-dlp failed: {e}")
 
@@ -146,3 +175,30 @@ def _youtube_id(url: str) -> str:
         if m:
             return m.group(1)
     raise ValueError(f"Cannot parse YouTube ID from {url}")
+
+
+def _parse_vtt(vtt: str) -> str:
+    """Extract plain text from WebVTT subtitle format.
+    
+    Strips: WEBVTT header, timestamps, positioning tags, duplicate lines.
+    """
+    lines = vtt.split("\n")
+    seen = set()
+    result = []
+    for line in lines:
+        line = line.strip()
+        # Skip header, empty lines, timestamps, positioning
+        if not line or line.startswith("WEBVTT") or line.startswith("Kind:") or line.startswith("Language:"):
+            continue
+        if re.match(r"^\d{2}:\d{2}", line):
+            continue
+        if re.match(r"^\d+$", line):
+            continue
+        # Strip HTML/VTT tags
+        line = re.sub(r"<[^>]+>", "", line)
+        line = re.sub(r"align:start position:\d+%", "", line)
+        line = line.strip()
+        if line and line not in seen:
+            seen.add(line)
+            result.append(line)
+    return " ".join(result)
