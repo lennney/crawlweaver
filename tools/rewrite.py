@@ -7,6 +7,7 @@ Factor #4: Tools are structured outputs (parse LLM response as article).
 """
 
 import logging
+import re
 from pathlib import Path
 
 from state import CrawlState, Step
@@ -51,7 +52,6 @@ def rewrite(state: CrawlState, llm: LLM, knowledge: Knowledge) -> CrawlState:
         # Parse result — extract title and body
         state.article_md = result
         # Try to extract H1 as title
-        import re
         h1 = re.search(r"^#\s+(.+)$", result, re.MULTILINE)
         state.title = h1.group(1) if h1 else state.title
 

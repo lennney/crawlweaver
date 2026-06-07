@@ -70,7 +70,7 @@ def main():
         cmd_knowledge(args)
     elif args.command == "dashboard":
         import uvicorn
-        uvicorn.run("web.app:app", host=args.host, port=args.port, reload=True)
+        uvicorn.run("web.app:app", host=args.host, port=args.port)
     else:
         parser.print_help()
 
@@ -100,7 +100,8 @@ def cmd_crawl(args):
 
     # Load or create state
     if args.load_state:
-        state = make_state.__func__.__class__.load(args.load_state)
+        from state import CrawlState
+        state = CrawlState.load(args.load_state)
         print(f"Resumed from: {args.load_state}")
     else:
         state = make_state(

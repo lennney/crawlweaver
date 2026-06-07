@@ -4,24 +4,9 @@
     <h1 class="text-3xl font-bold mb-8">🕷️ AI Crawler v2</h1>
 
     <!-- Stats Cards -->
-    <div id="stats" hx-get="/api/knowledge" hx-trigger="load" hx-swap="innerHTML"
+    <div id="stats" hx-get="/api/stats" hx-trigger="load" hx-swap="innerHTML"
          class="grid grid-cols-4 gap-4 mb-8">
-        <div class="bg-gray-900 rounded-lg p-4">
-            <div class="text-gray-400 text-sm">Crawled URLs</div>
-            <div class="text-2xl font-bold" id="stat-urls">—</div>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-            <div class="text-gray-400 text-sm">Site Patterns</div>
-            <div class="text-2xl font-bold" id="stat-patterns">—</div>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-            <div class="text-gray-400 text-sm">Avg Score</div>
-            <div class="text-2xl font-bold" id="stat-score">—</div>
-        </div>
-        <div class="bg-gray-900 rounded-lg p-4">
-            <div class="text-gray-400 text-sm">Failures</div>
-            <div class="text-2xl font-bold" id="stat-failures">—</div>
-        </div>
+        <div class="bg-gray-900 rounded-lg p-4"><div class="text-gray-400 text-sm">Loading...</div></div>
     </div>
 
     <!-- New Job Form -->

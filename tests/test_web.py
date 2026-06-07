@@ -9,6 +9,7 @@ def test_fastapi_app_loads():
     routes = [r.path for r in app.routes]
     assert "/" in routes
     assert "/api/health" in routes
+    assert "/api/stats" in routes
     assert "/api/jobs" in routes
     assert "/api/knowledge" in routes
     assert "/api/articles" in routes
@@ -30,7 +31,7 @@ async def test_health_endpoint():
 
 @pytest.mark.asyncio
 async def test_jobs_endpoint(tmp_path, monkeypatch):
-    """Jobs endpoint should return a list."""
+    """Jobs endpoint should return HTML table."""
     from httpx import AsyncClient, ASGITransport
     from web.app import app
     import web.api as api_module
@@ -41,9 +42,8 @@ async def test_jobs_endpoint(tmp_path, monkeypatch):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/jobs")
         assert resp.status_code == 200
-        data = resp.json()
-        assert "jobs" in data
-        assert isinstance(data["jobs"], list)
+        assert "text/html" in resp.headers["content-type"]
+        assert "No jobs yet" in resp.text or "<table" in resp.text
 
 
 @pytest.mark.asyncio
@@ -74,8 +74,8 @@ async def test_articles_endpoint_empty(tmp_path, monkeypatch):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/articles")
         assert resp.status_code == 200
-        data = resp.json()
-        assert "html" in data
+        assert "text/html" in resp.headers["content-type"]
+        assert "No articles" in resp.text
 
 
 @pytest.mark.asyncio
