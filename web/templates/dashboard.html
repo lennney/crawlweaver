@@ -88,6 +88,14 @@
         </div>
     </div>
 
+    <!-- Review Queue -->
+    <div class="bg-gray-900 rounded-lg p-6 mt-8">
+        <h2 class="text-xl font-semibold mb-4">👁️ Review Queue</h2>
+        <div hx-get="/api/review" hx-trigger="load, every 5s" hx-swap="innerHTML" id="review-queue">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+    </div>
+
     <!-- Cost Panel -->
     <div class="bg-gray-900 rounded-lg p-6 mt-8">
         <h2 class="text-xl font-semibold mb-4">💰 Cost Tracking</h2>

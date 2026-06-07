@@ -316,6 +316,85 @@ async def get_coverage():
     return HTMLResponse(html)
 
 
+@router.get("/review")
+async def review_queue():
+    """HTMX: return articles pending review."""
+    states_dir = DATA_DIR / "states"
+    pending = []
+    if states_dir.exists():
+        for f in sorted(states_dir.glob("*.json"), reverse=True):
+            try:
+                data = json.loads(f.read_text())
+                if data.get("step") == "review":
+                    pending.append({
+                        "id": f.stem,
+                        "url": data.get("url", ""),
+                        "keyword": data.get("keyword", ""),
+                        "score": data.get("verify", {}).get("score", 0) if data.get("verify") else 0,
+                        "html_path": data.get("html_path", ""),
+                    })
+            except Exception:
+                continue
+
+    if not pending:
+        return HTMLResponse("<p class='text-gray-500'>No articles pending review.</p>")
+
+    html = ""
+    for p in pending:
+        keyword = escape(p["keyword"] or p["url"][:50])
+        score = p["score"]
+        score_color = "text-green-400" if score >= 80 else "text-yellow-400" if score >= 60 else "text-red-400"
+        preview = ""
+        if p["html_path"]:
+            name = Path(p["html_path"]).name
+            preview = f'<a href="/api/articles/{escape(name)}" target="_blank" class="text-blue-400 hover:underline text-sm">Preview</a>'
+
+        html += f"""<div class="bg-gray-800 rounded-lg p-4 mb-3 flex items-center justify-between">
+            <div>
+                <div class="text-gray-200 font-medium">{keyword}</div>
+                <div class="text-sm {score_color}">Score: {score}/100</div>
+                {preview}
+            </div>
+            <div class="flex gap-2">
+                <button hx-post="/api/review/{escape(p['id'])}/approve" hx-swap="outerHTML"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                    ✅ Approve
+                </button>
+                <button hx-post="/api/review/{escape(p['id'])}/reject" hx-swap="outerHTML"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                    ❌ Reject
+                </button>
+            </div>
+        </div>"""
+
+    return HTMLResponse(html)
+
+
+@router.post("/review/{job_id}/approve")
+async def approve_article(job_id: str):
+    """Approve an article — change step from REVIEW to PASSED."""
+    state_path = DATA_DIR / "states" / f"{job_id}.json"
+    if not state_path.exists():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    data = json.loads(state_path.read_text())
+    data["step"] = "passed"
+    state_path.write_text(json.dumps(data, indent=2))
+    return HTMLResponse('<span class="text-green-400">✅ Approved</span>')
+
+
+@router.post("/review/{job_id}/reject")
+async def reject_article(job_id: str):
+    """Reject an article — change step from REVIEW to FAILED."""
+    state_path = DATA_DIR / "states" / f"{job_id}.json"
+    if not state_path.exists():
+        return JSONResponse({"error": "not found"}, status_code=404)
+    data = json.loads(state_path.read_text())
+    data["step"] = "failed"
+    data["error"] = "Rejected by human reviewer"
+    state_path.write_text(json.dumps(data, indent=2))
+    return HTMLResponse('<span class="text-red-400">❌ Rejected</span>')
+
+
 def make_crawl_handler() -> Callable[[Job], None]:
     """Create a crawl handler for the task queue."""
     def handler(job: Job):

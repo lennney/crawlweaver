@@ -97,8 +97,8 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
         _checkpoint()
 
         if state.verify and state.verify.passed:
-            # Success!
-            state.step = Step.PASSED
+            # Success — move to REVIEW for human approval
+            state.step = Step.REVIEW
             knowledge.record_crawl(state.url)
             if state.verify:
                 knowledge.record_quality("prompts/rewrite.md", state.verify.score)

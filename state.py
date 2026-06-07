@@ -30,6 +30,7 @@ class Step(str, Enum):
     SEO_DONE = "seo_done"
     RENDERED = "rendered"
     VERIFIED = "verified"
+    REVIEW = "review"
     PASSED = "passed"
     FAILED = "failed"
 
