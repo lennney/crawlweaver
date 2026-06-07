@@ -4,6 +4,7 @@ Factor #2: Own your prompts (caller provides system/user prompts).
 Factor #3: Own your context window (caller decides what goes in).
 """
 
+from dataclasses import dataclass
 import hashlib
 import json
 import logging
@@ -19,6 +20,34 @@ except ImportError:
     pass
 
 logger = logging.getLogger("crawler.llm")
+
+# Pricing per 1M tokens (USD)
+PRICING = {
+    "deepseek-chat": {"input": 0.14, "output": 0.28},
+    "qwen2.5:7b": {"input": 0.0, "output": 0.0},  # local, free
+}
+
+
+@dataclass
+class CostRecord:
+    step: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    model: str = ""
+    cost_usd: float = 0.0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+    @classmethod
+    def from_usage(cls, step: str, usage: dict, model: str = "") -> "CostRecord":
+        inp = usage.get("prompt_tokens", 0)
+        out = usage.get("completion_tokens", 0)
+        pricing = PRICING.get(model, {"input": 0, "output": 0})
+        cost = (inp * pricing["input"] + out * pricing["output"]) / 1_000_000
+        return cls(step=step, input_tokens=inp, output_tokens=out, model=model, cost_usd=round(cost, 6))
+
 
 _cache_dir = Path(__file__).parent / "cache" / "llm"
 _clients: dict[str, Any] = {}
@@ -59,6 +88,7 @@ class LLM:
 
     def __init__(self, timeout: int = 120):
         self.timeout = timeout
+        self.last_cost: CostRecord | None = None
 
     def call(
         self,
@@ -76,7 +106,7 @@ class LLM:
                 logger.debug(f"Cache hit for {cache_step}")
                 return cached
 
-        result = self._call_with_fallback(system, user, max_tokens, temperature)
+        result = self._call_with_fallback(system, user, max_tokens, temperature, cache_step or "unknown")
 
         # Cache store
         if cache_step and cache_input:
@@ -84,7 +114,7 @@ class LLM:
 
         return result
 
-    def _call_with_fallback(self, system: str, user: str, max_tokens: int, temperature: float) -> str:
+    def _call_with_fallback(self, system: str, user: str, max_tokens: int, temperature: float, step: str = "unknown") -> str:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -103,6 +133,13 @@ class LLM:
                         model=model, messages=messages,
                         max_tokens=max_tokens, temperature=temperature,
                     )
+                    usage = resp.usage
+                    if usage:
+                        self.last_cost = CostRecord.from_usage(
+                            step=step,
+                            usage={"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens},
+                            model=model,
+                        )
                     return resp.choices[0].message.content.strip()
                 except Exception as e:
                     logger.warning(f"DeepSeek attempt {attempt+1}/3 failed: {e}")
@@ -122,6 +159,13 @@ class LLM:
                     model=ollama_model, messages=messages,
                     max_tokens=max_tokens, temperature=temperature,
                 )
+                usage = resp.usage
+                if usage:
+                    self.last_cost = CostRecord.from_usage(
+                        step=step,
+                        usage={"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens},
+                        model=ollama_model,
+                    )
                 return resp.choices[0].message.content.strip()
             except Exception as e:
                 logger.warning(f"Ollama attempt {attempt+1}/2 failed: {e}")
