@@ -232,6 +232,44 @@ async def batch_import(request: Request):
     return HTMLResponse(f'<span class="text-green-400">✅ {count} jobs queued</span>')
 
 
+@router.get("/coverage")
+async def get_coverage():
+    """HTMX: return keyword coverage HTML panel."""
+    k_path = DATA_DIR / "knowledge.json"
+    if not k_path.exists():
+        return HTMLResponse("<p class='text-gray-500'>No data yet.</p>")
+
+    data = json.loads(k_path.read_text())
+    coverage = data.get("keyword_coverage", {})
+
+    if not coverage:
+        return HTMLResponse("<p class='text-gray-500'>No keywords tracked yet.</p>")
+
+    covered = [(k, v) for k, v in coverage.items() if v.get("covered")]
+    uncovered = [(k, v) for k, v in coverage.items() if not v.get("covered")]
+
+    html = f'<div class="mb-4 text-sm text-gray-400">'
+    html += f'✅ {len(covered)} covered | ⏳ {len(uncovered)} targeted</div>'
+
+    if covered:
+        html += '<h4 class="text-md font-medium text-green-400 mb-2">✅ Covered</h4>'
+        html += '<table class="w-full text-sm mb-4"><thead><tr class="text-left text-gray-500 border-b border-gray-700">'
+        html += '<th class="pb-2 pr-4">Keyword</th><th class="pb-2 pr-4">Score</th><th class="pb-2">URL</th></tr></thead><tbody>'
+        for kw, info in sorted(covered, key=lambda x: x[1].get("score", 0), reverse=True):
+            html += f'<tr class="border-b border-gray-800"><td class="py-2 pr-4 text-gray-300">{escape(kw)}</td>'
+            html += f'<td class="py-2 pr-4 text-green-400">{info.get("score", 0)}</td>'
+            html += f'<td class="py-2 text-gray-500 text-xs truncate max-w-xs">{escape(info.get("article_url", ""))}</td></tr>'
+        html += '</tbody></table>'
+
+    if uncovered:
+        html += '<h4 class="text-md font-medium text-yellow-400 mb-2">⏳ To Cover</h4><div class="flex flex-wrap gap-2">'
+        for kw, _ in uncovered:
+            html += f'<span class="bg-gray-800 text-gray-300 px-3 py-1 rounded text-sm">{escape(kw)}</span>'
+        html += '</div>'
+
+    return HTMLResponse(html)
+
+
 def make_crawl_handler() -> Callable[[Job], None]:
     """Create a crawl handler for the task queue."""
     def handler(job: Job):

@@ -101,6 +101,13 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
                 prompt="prompts/rewrite.md",
                 quality=state.verify.score,
             )
+            # Record keyword coverage
+            if state.keyword:
+                knowledge.record_coverage(
+                    keyword=state.keyword,
+                    article_url=state.html_path or state.url,
+                    score=state.verify.score if state.verify else 0,
+                )
             _checkpoint()
             logger.info(f"PASSED: {state.keyword} (score={state.verify.score})")
             return state

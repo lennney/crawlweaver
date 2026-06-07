@@ -113,3 +113,18 @@ async def test_batch_import_no_file():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/api/batch")
         assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_coverage_endpoint_empty(tmp_path, monkeypatch):
+    """Coverage endpoint should handle missing data."""
+    from httpx import AsyncClient, ASGITransport
+    from web.app import app
+    import web.api as api_module
+
+    monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/api/coverage")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]

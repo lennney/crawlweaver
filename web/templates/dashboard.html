@@ -79,5 +79,13 @@
             </div>
         </div>
     </div>
+
+    <!-- Keyword Coverage -->
+    <div class="bg-gray-900 rounded-lg p-6 mt-8">
+        <h2 class="text-xl font-semibold mb-4">🎯 Keyword Coverage</h2>
+        <div hx-get="/api/coverage" hx-trigger="load" hx-swap="innerHTML" id="coverage-panel">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+    </div>
 </div>
 {% endblock %}
