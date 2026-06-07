@@ -103,12 +103,18 @@ def cmd_crawl(args):
             target_words=args.target_words,
         )
 
-    # Run reducer
+    # Auto-create states dir for WAL (Factor #6)
+    state_dir = Path(args.knowledge).parent / "states"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_hash = f"{hash(state.url) & 0xFFFFFF:06x}"
+    auto_state_path = str(state_dir / f"{state_hash}.json")
+
+    # Run reducer with WAL auto-save
     print(f"\nCrawling: {state.url}")
     print(f"Source: {state.source.value} | Keyword: {state.keyword}")
     print("-" * 50)
 
-    state = crawl(state, knowledge, llm)
+    state = crawl(state, knowledge, llm, state_path=auto_state_path)
 
     # Save state if requested
     if args.save_state:

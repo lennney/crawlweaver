@@ -1,4 +1,4 @@
-"""Reducer — the core crawl function (Factor #8 + #12).
+"""Reducer - the core crawl function (Factor #8 + #12).
 
 This IS the control flow. No framework, no engine, no black box.
 Just a function that takes state in, runs tools in order, returns state out.
@@ -6,8 +6,10 @@ Just a function that takes state in, runs tools in order, returns state out.
 The entire flow is readable in one function. That is the point.
 """
 
+from __future__ import annotations
 import logging
 from pathlib import Path
+from typing import Optional
 
 from state import CrawlState, Step
 from knowledge import Knowledge
@@ -24,44 +26,57 @@ logger = logging.getLogger("crawler.reducer")
 MAX_FIX_ATTEMPTS = 2
 
 
-def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM) -> CrawlState:
-    """The complete crawl pipeline — Factor #12: stateless reducer.
+def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optional[str] = None) -> CrawlState:
+    """The complete crawl pipeline - Factor #12: stateless reducer.
     
     Flow:
-        extract → rewrite → seo → render → verify
-                                              ↓ fail
+        extract -> rewrite -> seo -> render -> verify
+                                              | fail
                                           fix (rewrite + seo + render + verify, max 2x)
-                                              ↓ still fail
+                                              | still fail
                                           mark for human review
     """
 
-    # Factor #13: Pre-fetch — check if already crawled
+    def _checkpoint():
+        """Factor #6: auto-save state after each step (WAL mode)."""
+        if state_path:
+            try:
+                state.save(state_path)
+            except Exception as e:
+                logger.warning(f"WAL checkpoint failed: {e}")
+
+    # Factor #13: Pre-fetch - check if already crawled
     if knowledge.was_crawled(state.url):
         logger.info(f"URL already crawled: {state.url}")
         state.append_event("skip", True, "Already crawled")
+        _checkpoint()
         return state
 
     # --- Step 1: Extract ---
     logger.info(f"[1/5] Extracting: {state.url}")
     state = extract(state)
+    _checkpoint()
     if state.error:
         return state
 
     # --- Step 2: Rewrite ---
     logger.info(f"[2/5] Rewriting: {state.keyword}")
     state = rewrite(state, llm, knowledge)
+    _checkpoint()
     if state.error:
         return state
 
     # --- Step 3: SEO ---
     logger.info(f"[3/5] SEO: {state.keyword}")
     state = seo(state, llm)
+    _checkpoint()
     if state.error:
         return state
 
     # --- Step 4: Render ---
     logger.info(f"[4/5] Rendering: {state.keyword}")
     state = render(state)
+    _checkpoint()
     if state.error:
         return state
 
@@ -69,6 +84,7 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM) -> CrawlState:
     for attempt in range(MAX_FIX_ATTEMPTS + 1):
         logger.info(f"[5/5] Verifying (attempt {attempt + 1}): {state.keyword}")
         state = verify(state, llm)
+        _checkpoint()
 
         if state.verify and state.verify.passed:
             # Success!
@@ -76,10 +92,11 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM) -> CrawlState:
             knowledge.record_crawl(state.url)
             if state.verify:
                 knowledge.record_quality("prompts/rewrite.md", state.verify.score)
+            _checkpoint()
             logger.info(f"PASSED: {state.keyword} (score={state.verify.score})")
             return state
 
-        # Factor #9: Compact errors → inject into next rewrite context
+        # Factor #9: Compact errors -> inject into next rewrite context
         if attempt < MAX_FIX_ATTEMPTS:
             logger.info(f"Verification failed, fixing (attempt {attempt + 1}/{MAX_FIX_ATTEMPTS})")
             state.attempts = attempt + 1
@@ -87,11 +104,13 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM) -> CrawlState:
             state = rewrite(state, llm, knowledge)
             state = seo(state, llm)
             state = render(state)
+            _checkpoint()
         else:
             # Factor #7: Contact human via tool call
             logger.warning(f"FAILED after {MAX_FIX_ATTEMPTS + 1} attempts: {state.keyword}")
             state.step = Step.FAILED
             state.error = f"Verification failed after {MAX_FIX_ATTEMPTS + 1} attempts"
             knowledge.record_failure(state.url, state.error)
+            _checkpoint()
 
     return state
