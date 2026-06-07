@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import csv
 import json
 import logging
 import sys
@@ -52,6 +53,12 @@ def main():
     p_dash.add_argument("--port", type=int, default=8080)
     p_dash.add_argument("--host", default="0.0.0.0")
 
+    # batch command
+    p_batch = sub.add_parser("batch", help="Batch import from CSV")
+    p_batch.add_argument("csv", help="CSV file (columns: url, keyword, source)")
+    p_batch.add_argument("--knowledge", default="knowledge.json")
+    p_batch.add_argument("--max-workers", type=int, default=2)
+
     args = parser.parse_args()
 
     # Logging
@@ -71,6 +78,8 @@ def main():
     elif args.command == "dashboard":
         import uvicorn
         uvicorn.run("web.app:app", host=args.host, port=args.port)
+    elif args.command == "batch":
+        cmd_batch(args)
     else:
         parser.print_help()
 
@@ -177,6 +186,70 @@ def cmd_knowledge(args):
         print("\nPrompt performance:")
         for path, stats in knowledge.prompt_stats.items():
             print(f"  {path}: avg={stats.avg_score:.1f} ({stats.count} samples)")
+
+
+def parse_batch_csv(path: str) -> list[dict]:
+    """Parse batch CSV file. Required columns: url, keyword.
+    Optional: source (default youtube), content_type (default Beginner Guide).
+    """
+    rows = []
+    with open(path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            url = row.get("url", "").strip()
+            if not url:
+                continue
+            rows.append({
+                "url": url,
+                "keyword": row.get("keyword", "").strip(),
+                "source": row.get("source", "youtube").strip() or "youtube",
+                "content_type": row.get("content_type", "Beginner Guide").strip() or "Beginner Guide",
+            })
+    return rows
+
+
+def cmd_batch(args):
+    """Batch import from CSV."""
+    rows = parse_batch_csv(args.csv)
+    if not rows:
+        print("No valid rows in CSV")
+        return
+
+    print(f"Loaded {len(rows)} jobs from {args.csv}")
+    for i, row in enumerate(rows, 1):
+        print(f"  [{i}] {row['keyword']} → {row['url']}")
+
+    from task_queue import TaskQueue
+
+    def crawl_handler(job):
+        from state import make_state
+        from knowledge import load_knowledge, save_knowledge
+        from llm import LLM
+        from reducer import crawl as run_crawl
+
+        state = make_state(url=job.url, source=job.source, keyword=job.keyword)
+        knowledge = load_knowledge(args.knowledge)
+        llm = LLM()
+        state = run_crawl(state, knowledge, llm)
+        save_knowledge(knowledge, args.knowledge)
+        job.result = {"step": state.step.value}
+
+    tq = TaskQueue(max_workers=args.max_workers)
+    tq.set_handler(crawl_handler)
+    for row in rows:
+        tq.submit(**row)
+
+    # Wait for all to finish
+    import time
+    while True:
+        stats = tq.stats()
+        if stats["pending"] == 0 and stats["running"] == 0:
+            break
+        time.sleep(1)
+
+    # Summary
+    stats = tq.stats()
+    print(f"\nBatch complete: {stats['completed']} passed, {stats['failed']} failed out of {len(rows)}")
 
 
 if __name__ == "__main__":
