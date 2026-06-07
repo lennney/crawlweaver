@@ -39,6 +39,14 @@ class FailureRecord(BaseModel):
     last_seen: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
+class ArticleCost(BaseModel):
+    url: str = ""
+    keyword: str = ""
+    total_cost_usd: float = 0.0
+    steps: list[dict] = Field(default_factory=list)  # [{step, tokens, cost}]
+    timestamp: str = ""
+
+
 class PromptStats(BaseModel):
     avg_score: float = 0.0
     count: int = 0
@@ -58,6 +66,7 @@ class Knowledge(BaseModel):
     failure_log: list[FailureRecord] = Field(default_factory=list)
     prompt_stats: dict[str, PromptStats] = Field(default_factory=dict)
     keyword_coverage: dict[str, KeywordCoverage] = Field(default_factory=dict)
+    article_costs: list[ArticleCost] = Field(default_factory=list)
 
     def was_crawled(self, url: str) -> bool:
         return url in self.crawled_urls
@@ -129,6 +138,23 @@ class Knowledge(BaseModel):
         covered = sum(1 for c in self.keyword_coverage.values() if c.covered)
         targeted = sum(1 for c in self.keyword_coverage.values() if not c.covered)
         return {"covered": covered, "targeted": targeted, "total_keywords": len(self.keyword_coverage)}
+
+    def record_article_cost(self, url: str, keyword: str, cost_records: list):
+        """Record total cost for an article."""
+        total = sum(c.cost_usd for c in cost_records)
+        steps = [{"step": c.step, "tokens": c.total_tokens, "cost": c.cost_usd} for c in cost_records]
+        self.article_costs.append(ArticleCost(
+            url=url, keyword=keyword, total_cost_usd=total,
+            steps=steps, timestamp=datetime.now().isoformat(),
+        ))
+
+    def total_cost(self) -> float:
+        return sum(a.total_cost_usd for a in self.article_costs)
+
+    def avg_cost(self) -> float:
+        if not self.article_costs:
+            return 0.0
+        return self.total_cost() / len(self.article_costs)
 
 
 def load_knowledge(path: str | Path) -> Knowledge:

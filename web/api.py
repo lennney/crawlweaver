@@ -232,6 +232,52 @@ async def batch_import(request: Request):
     return HTMLResponse(f'<span class="text-green-400">✅ {count} jobs queued</span>')
 
 
+@router.get("/costs")
+async def get_costs():
+    """HTMX: return cost statistics HTML panel."""
+    k_path = DATA_DIR / "knowledge.json"
+    if not k_path.exists():
+        return HTMLResponse("<p class='text-gray-500'>No cost data yet.</p>")
+
+    data = json.loads(k_path.read_text())
+    article_costs = data.get("article_costs", [])
+
+    if not article_costs:
+        return HTMLResponse("<p class='text-gray-500'>No cost data yet.</p>")
+
+    total = sum(a.get("total_cost_usd", 0) for a in article_costs)
+    avg = total / len(article_costs) if article_costs else 0
+
+    html = f"""<div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="bg-gray-800 rounded p-3">
+            <div class="text-gray-400 text-sm">Total Cost</div>
+            <div class="text-2xl font-bold text-green-400">${total:.4f}</div>
+        </div>
+        <div class="bg-gray-800 rounded p-3">
+            <div class="text-gray-400 text-sm">Avg/Article</div>
+            <div class="text-2xl font-bold text-yellow-400">${avg:.4f}</div>
+        </div>
+    </div>"""
+
+    html += '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b border-gray-700">'
+    html += '<th class="pb-2 pr-4">Keyword</th><th class="pb-2 pr-4">Tokens</th><th class="pb-2 pr-4">Cost</th><th class="pb-2">Steps</th></tr></thead><tbody>'
+
+    for a in reversed(article_costs):
+        keyword = escape(a.get("keyword", "") or a.get("url", "")[:40])
+        total_tokens = sum(s.get("tokens", 0) for s in a.get("steps", []))
+        cost = a.get("total_cost_usd", 0)
+        steps = ", ".join(s.get("step", "") for s in a.get("steps", []))
+        html += f'<tr class="border-b border-gray-800">'
+        html += f'<td class="py-2 pr-4 text-gray-300">{keyword}</td>'
+        html += f'<td class="py-2 pr-4 text-gray-400">{total_tokens:,}</td>'
+        html += f'<td class="py-2 pr-4 text-green-400">${cost:.4f}</td>'
+        html += f'<td class="py-2 text-gray-500 text-xs">{escape(steps)}</td>'
+        html += '</tr>'
+
+    html += '</tbody></table>'
+    return HTMLResponse(html)
+
+
 @router.get("/coverage")
 async def get_coverage():
     """HTMX: return keyword coverage HTML panel."""

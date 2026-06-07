@@ -53,6 +53,9 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
         _checkpoint()
         return state
 
+    # Cost tracking: collect CostRecord after each LLM step
+    cost_records: list = []
+
     # --- Step 1: Extract ---
     logger.info(f"[1/5] Extracting: {state.url}")
     state = extract(state)
@@ -63,6 +66,8 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
     # --- Step 2: Rewrite ---
     logger.info(f"[2/5] Rewriting: {state.keyword}")
     state = rewrite(state, llm, knowledge)
+    if llm.last_cost:
+        cost_records.append(llm.last_cost)
     _checkpoint()
     if state.error:
         return state
@@ -70,6 +75,8 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
     # --- Step 3: SEO ---
     logger.info(f"[3/5] SEO: {state.keyword}")
     state = seo(state, llm)
+    if llm.last_cost:
+        cost_records.append(llm.last_cost)
     _checkpoint()
     if state.error:
         return state
@@ -85,6 +92,8 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
     for attempt in range(MAX_FIX_ATTEMPTS + 1):
         logger.info(f"[5/5] Verifying (attempt {attempt + 1}): {state.keyword}")
         state = verify(state, llm)
+        if llm.last_cost:
+            cost_records.append(llm.last_cost)
         _checkpoint()
 
         if state.verify and state.verify.passed:
@@ -108,6 +117,13 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
                     article_url=state.html_path or state.url,
                     score=state.verify.score if state.verify else 0,
                 )
+            # Record article cost
+            if cost_records:
+                knowledge.record_article_cost(
+                    url=state.url,
+                    keyword=state.keyword,
+                    cost_records=cost_records,
+                )
             _checkpoint()
             logger.info(f"PASSED: {state.keyword} (score={state.verify.score})")
             return state
@@ -118,7 +134,11 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
             state.attempts = attempt + 1
             # Only rewrite + re-render, don't re-extract
             state = rewrite(state, llm, knowledge)
+            if llm.last_cost:
+                cost_records.append(llm.last_cost)
             state = seo(state, llm)
+            if llm.last_cost:
+                cost_records.append(llm.last_cost)
             state = render(state)
             _checkpoint()
         else:
