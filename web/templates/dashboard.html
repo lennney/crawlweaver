@@ -37,6 +37,22 @@
         </form>
     </div>
 
+    <!-- Batch Import -->
+    <div class="bg-gray-900 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">📋 Batch Import</h2>
+        <form hx-post="/api/batch" hx-encoding="multipart/form-data"
+              hx-target="#batch-result" class="flex gap-4 items-end">
+            <div class="flex-1">
+                <input name="file" type="file" accept=".csv"
+                       class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100 text-sm">
+            </div>
+            <button type="submit" class="bg-green-600 hover:bg-green-700 rounded px-6 py-2 font-medium">
+                📤 Import CSV
+            </button>
+        </form>
+        <div id="batch-result" class="mt-2 text-sm"></div>
+    </div>
+
     <!-- Jobs Table -->
     <div class="bg-gray-900 rounded-lg p-6 mb-8">
         <h2 class="text-xl font-semibold mb-4">Recent Jobs</h2>

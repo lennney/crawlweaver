@@ -1,7 +1,9 @@
 """API routes for the dashboard."""
+import csv
 import json
 import logging
 from html import escape
+from io import StringIO
 from pathlib import Path
 from typing import Callable
 from fastapi import APIRouter, Request
@@ -199,6 +201,35 @@ async def get_article(name: str):
         from fastapi.responses import FileResponse
         return FileResponse(path, media_type="text/html")
     return JSONResponse({"error": "not found"}, status_code=404)
+
+
+@router.post("/batch")
+async def batch_import(request: Request):
+    """Upload CSV for batch import into task queue."""
+    form = await request.form()
+    csv_file = form.get("file")
+    if not csv_file:
+        return JSONResponse({"error": "No file"}, status_code=400)
+
+    content = await csv_file.read()
+    text = content.decode("utf-8")
+    reader = csv.DictReader(StringIO(text))
+
+    tq = get_queue()
+    count = 0
+    for row in reader:
+        url = row.get("url", "").strip()
+        if not url:
+            continue
+        tq.submit(
+            url=url,
+            keyword=row.get("keyword", "").strip(),
+            source=row.get("source", "youtube").strip() or "youtube",
+            content_type=row.get("content_type", "Beginner Guide").strip() or "Beginner Guide",
+        )
+        count += 1
+
+    return HTMLResponse(f'<span class="text-green-400">✅ {count} jobs queued</span>')
 
 
 def make_crawl_handler() -> Callable[[Job], None]:

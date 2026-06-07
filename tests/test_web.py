@@ -103,3 +103,13 @@ async def test_create_job_endpoint():
         data = resp.json()
         assert data["status"] == "submitted"
         assert "job_id" in data
+
+@pytest.mark.asyncio
+async def test_batch_import_no_file():
+    """POST /api/batch without file should return 400."""
+    from httpx import AsyncClient, ASGITransport
+    from web.app import app
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post("/api/batch")
+        assert resp.status_code == 400
