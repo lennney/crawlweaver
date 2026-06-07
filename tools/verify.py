@@ -1,18 +1,16 @@
-"""Verify tool — AI-powered quality check (Factor #9: Compact errors).
+"""Verify tool - AI-powered quality check (Factor #9: Compact errors).
 
 5-dimension scoring. Failures become compact error messages
 that get injected back into rewrite context for self-healing.
 """
-
-import json
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
 
 from state import CrawlState, Step, VerifyResult
 from llm import LLM
 from context import build_verify_context
+from tools.parse import parse_json
 
 logger = logging.getLogger("crawler.verify")
 
@@ -78,20 +76,8 @@ def verify(state: CrawlState, llm: LLM, min_score: int = 70) -> CrawlState:
 
 def _parse_verify_json(text: str) -> dict:
     """Parse JSON from LLM, with type normalization (v1 lesson)."""
-    # Extract JSON
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        m = re.search(r"```(?:json)?\s*\n?(.+?)\n?```", text, re.DOTALL)
-        if m:
-            data = json.loads(m.group(1))
-        else:
-            start = text.find("{")
-            end = text.rfind("}")
-            if start >= 0 and end > start:
-                data = json.loads(text[start:end + 1])
-            else:
-                raise ValueError(f"Cannot parse verify JSON: {text[:200]}")
+    # Use shared JSON parser (Factor #4)
+    data = parse_json(text)
 
     # Normalize types (v1 lesson: LLM output format never trustworthy)
     for key in ("issues", "fix_suggestions"):

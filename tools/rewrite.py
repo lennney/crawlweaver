@@ -13,6 +13,7 @@ from state import CrawlState, Step
 from llm import LLM
 from context import build_rewrite_context
 from knowledge import Knowledge
+from tools.parse import parse_llm_output
 
 logger = logging.getLogger("crawler.rewrite")
 
@@ -38,14 +39,14 @@ def rewrite(state: CrawlState, llm: LLM, knowledge: Knowledge) -> CrawlState:
         user_prompt = build_rewrite_context(state, knowledge)
 
         logger.info(f"Rewriting '{state.keyword}' ({len(state.raw_text)} chars raw)")
-        result = llm.call(
+        result = parse_llm_output(llm.call(
             system=system_prompt,
             user=user_prompt,
             max_tokens=4096,
             temperature=0.7,
             cache_step="rewrite",
             cache_input=state.raw_text[:500],
-        )
+        ))
 
         # Parse result — extract title and body
         state.article_md = result

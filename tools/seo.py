@@ -1,16 +1,14 @@
-"""SEO tool — generate metadata (title, description, slug, h1).
+"""SEO tool - generate metadata (title, description, slug, h1).
 
-Factor #4: LLM outputs structured JSON → deterministic code uses it.
+Factor #4: LLM outputs structured JSON -> deterministic code uses it.
 """
-
-import json
 import logging
-import re
 from pathlib import Path
 
 from state import CrawlState, SeoMetadata, Step
 from llm import LLM
 from context import build_seo_context
+from tools.parse import parse_json
 
 logger = logging.getLogger("crawler.seo")
 
@@ -38,8 +36,8 @@ def seo(state: CrawlState, llm: LLM) -> CrawlState:
             cache_input=state.article_md[:300],
         )
 
-        # Parse JSON from LLM response
-        metadata = _parse_json(result)
+        # Parse JSON from LLM response using shared parser
+        metadata = parse_json(result)
         state.seo = SeoMetadata(
             title_tag=metadata.get("title_tag", "")[:60],
             meta_description=metadata.get("meta_description", "")[:160],
@@ -57,31 +55,3 @@ def seo(state: CrawlState, llm: LLM) -> CrawlState:
         logger.error(f"SEO failed: {e}")
 
     return state
-
-
-def _parse_json(text: str) -> dict:
-    """Extract JSON from LLM response (handles markdown code blocks)."""
-    # Try direct parse
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    # Try extracting from code block
-    m = re.search(r"```(?:json)?\s*\n?(.+?)\n?```", text, re.DOTALL)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except json.JSONDecodeError:
-            pass
-
-    # Try finding first { to last }
-    start = text.find("{")
-    end = text.rfind("}")
-    if start >= 0 and end > start:
-        try:
-            return json.loads(text[start:end + 1])
-        except json.JSONDecodeError:
-            pass
-
-    raise ValueError(f"Cannot parse JSON from LLM response: {text[:200]}")

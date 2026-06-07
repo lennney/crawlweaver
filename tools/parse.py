@@ -1,0 +1,64 @@
+"""Shared parsing utilities for LLM output.
+
+Factor #4: Tools are structured outputs.
+Centralizes JSON extraction and output validation.
+"""
+import json
+import re
+
+
+def parse_json(text: str) -> dict:
+    """Extract JSON from LLM response. Tries 3 strategies.
+    
+    1. Direct json.loads
+    2. Extract from ```json...``` code block
+    3. Find first { to last }
+    
+    Raises ValueError if no valid JSON found.
+    """
+    if not text or not text.strip():
+        raise ValueError("Cannot parse JSON from empty string")
+
+    # Strategy 1: direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Strategy 2: code block
+    m = re.search(r"```(?:json)?\s*\n?(.+?)\n?```", text, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # Strategy 3: first { to last }
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Cannot parse JSON from LLM response: {text[:200]}")
+
+
+def parse_llm_output(text: str, min_length: int = 50) -> str:
+    """Validate and clean LLM text output.
+    
+    - Strips <think> tags
+    - Checks minimum length
+    - Raises ValueError on empty/invalid output
+    """
+    if not text or not text.strip():
+        raise ValueError("LLM returned empty output")
+
+    # Strip <think>...</think> blocks (some models include reasoning)
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+    if len(cleaned) < min_length:
+        raise ValueError(f"LLM output too short ({len(cleaned)} < {min_length}): {cleaned[:100]}")
+
+    return cleaned
