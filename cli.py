@@ -59,6 +59,12 @@ def main():
     p_batch.add_argument("--knowledge", default="knowledge.json")
     p_batch.add_argument("--max-workers", type=int, default=2)
 
+    # publish command
+    p_publish = sub.add_parser("publish", help="Generate static site from articles")
+    p_publish.add_argument("--output", default="output", help="Articles directory")
+    p_publish.add_argument("--site-dir", default="site", help="Output site directory")
+    p_publish.add_argument("--title", default="AI Content Hub")
+
     args = parser.parse_args()
 
     # Logging
@@ -80,6 +86,13 @@ def main():
         uvicorn.run("web.app:app", host=args.host, port=args.port)
     elif args.command == "batch":
         cmd_batch(args)
+    elif args.command == "publish":
+        from publisher import generate_site
+        site_dir = Path(args.site_dir)
+        generate_site(Path(args.output), site_dir, args.title)
+        article_count = len(list(site_dir.glob("*.html"))) - 1  # exclude index
+        print(f"Site generated: {args.site_dir}/")
+        print(f"  index.html + {article_count} articles + feed.xml")
     else:
         parser.print_help()
 
