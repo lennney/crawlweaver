@@ -24,6 +24,14 @@ class SitePattern(BaseModel):
     total_quality: float = 0.0
 
 
+class KeywordCoverage(BaseModel):
+    keyword: str = ""
+    covered: bool = False
+    article_url: str = ""
+    score: int = 0
+    covered_at: str = ""
+
+
 class FailureRecord(BaseModel):
     url: str
     error: str
@@ -49,6 +57,7 @@ class Knowledge(BaseModel):
     site_patterns: dict[str, SitePattern] = Field(default_factory=dict)
     failure_log: list[FailureRecord] = Field(default_factory=list)
     prompt_stats: dict[str, PromptStats] = Field(default_factory=dict)
+    keyword_coverage: dict[str, KeywordCoverage] = Field(default_factory=dict)
 
     def was_crawled(self, url: str) -> bool:
         return url in self.crawled_urls
@@ -98,6 +107,28 @@ class Knowledge(BaseModel):
 
     def failure_count(self, url: str) -> int:
         return sum(r.count for r in self.failure_log if r.url == url)
+
+    def record_coverage(self, keyword: str, article_url: str, score: int):
+        """Record that a keyword has been covered."""
+        self.keyword_coverage[keyword] = KeywordCoverage(
+            keyword=keyword,
+            covered=True,
+            article_url=article_url,
+            score=score,
+            covered_at=datetime.now().isoformat(),
+        )
+
+    def add_target_keyword(self, keyword: str):
+        """Add a target keyword (not yet covered)."""
+        if keyword not in self.keyword_coverage:
+            self.keyword_coverage[keyword] = KeywordCoverage(
+                keyword=keyword, covered=False,
+            )
+
+    def coverage_summary(self) -> dict:
+        covered = sum(1 for c in self.keyword_coverage.values() if c.covered)
+        targeted = sum(1 for c in self.keyword_coverage.values() if not c.covered)
+        return {"covered": covered, "targeted": targeted, "total_keywords": len(self.keyword_coverage)}
 
 
 def load_knowledge(path: str | Path) -> Knowledge:
