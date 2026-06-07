@@ -278,6 +278,55 @@ async def get_costs():
     return HTMLResponse(html)
 
 
+@router.get("/trends")
+async def quality_trends():
+    """HTMX: return quality trend SVG chart."""
+    states_dir = DATA_DIR / "states"
+    scores = []
+    if states_dir.exists():
+        for f in sorted(states_dir.glob("*.json")):
+            try:
+                data = json.loads(f.read_text())
+                verify = data.get("verify")
+                if verify and verify.get("score"):
+                    scores.append({
+                        "keyword": data.get("keyword", ""),
+                        "score": verify["score"],
+                        "step": data.get("step", ""),
+                    })
+            except Exception:
+                continue
+
+    if not scores:
+        return HTMLResponse("<p class='text-gray-500'>No scored articles yet.</p>")
+
+    # Generate SVG line chart
+    max_score = 100
+    width = 600
+    height = 200
+    step_x = width / max(len(scores) - 1, 1)
+
+    points = []
+    for i, s in enumerate(scores):
+        x = int(i * step_x)
+        y = int(height - (s["score"] / max_score) * (height - 20))
+        points.append(f"{x},{y}")
+
+    polyline = " ".join(points)
+    avg = sum(s["score"] for s in scores) / len(scores)
+
+    svg = f"""<svg viewBox="0 0 {width} {height + 30}" class="w-full h-auto">
+        <line x1="0" y1="{height}" x2="{width}" y2="{height}" stroke="#374151" stroke-width="1"/>
+        <line x1="0" y1="0" x2="0" y2="{height}" stroke="#374151" stroke-width="1"/>
+        <polyline points="{polyline}" fill="none" stroke="#3b82f6" stroke-width="2"/>
+        <line x1="0" y1="{int(height - (avg/100)*(height-20))}" x2="{width}" y2="{int(height - (avg/100)*(height-20))}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4"/>
+        <text x="{width}" y="{height + 15}" text-anchor="end" fill="#9ca3af" font-size="10">avg: {avg:.0f}</text>
+        <text x="0" y="{height + 15}" fill="#9ca3af" font-size="10">articles: {len(scores)}</text>
+    </svg>"""
+
+    return HTMLResponse(svg)
+
+
 @router.get("/coverage")
 async def get_coverage():
     """HTMX: return keyword coverage HTML panel."""

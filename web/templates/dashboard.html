@@ -96,6 +96,14 @@
         </div>
     </div>
 
+    <!-- Quality Trends -->
+    <div class="bg-gray-900 rounded-lg p-6 mt-8">
+        <h2 class="text-xl font-semibold mb-4">📈 Quality Trends</h2>
+        <div hx-get="/api/trends" hx-trigger="load" hx-swap="innerHTML" id="trends-chart">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+    </div>
+
     <!-- Cost Panel -->
     <div class="bg-gray-900 rounded-lg p-6 mt-8">
         <h2 class="text-xl font-semibold mb-4">💰 Cost Tracking</h2>

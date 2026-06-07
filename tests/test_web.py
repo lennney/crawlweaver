@@ -254,3 +254,49 @@ async def test_costs_endpoint_empty(tmp_path, monkeypatch):
         resp = await client.get("/api/costs")
         assert resp.status_code == 200
         assert "No cost data yet" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_trends_endpoint_empty(tmp_path, monkeypatch):
+    """Trends endpoint should handle missing states dir."""
+    from httpx import AsyncClient, ASGITransport
+    from web.app import app
+    import web.api as api_module
+
+    monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/api/trends")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+        assert "No scored articles" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_trends_endpoint_with_scores(tmp_path, monkeypatch):
+    """Trends endpoint should return SVG chart with scores."""
+    import json
+    from httpx import AsyncClient, ASGITransport
+    from web.app import app
+    import web.api as api_module
+
+    monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
+    states_dir = tmp_path / "states"
+    states_dir.mkdir()
+
+    # Create scored states
+    for i, score in enumerate([70, 85, 90]):
+        data = {
+            "url": f"https://example.com/{i}",
+            "keyword": f"keyword-{i}",
+            "step": "passed",
+            "verify": {"score": score, "passed": True},
+        }
+        (states_dir / f"job-{i:03d}.json").write_text(json.dumps(data))
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/api/trends")
+        assert resp.status_code == 200
+        assert "<svg" in resp.text
+        assert "polyline" in resp.text
+        assert "avg:" in resp.text
