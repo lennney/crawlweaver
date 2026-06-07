@@ -7,11 +7,16 @@ LLM never needs to "search memory" or "recall" — it's already in context.
 from state import CrawlState
 from knowledge import Knowledge
 
+# Factor #3: Named constants instead of magic numbers
+MAX_SOURCE_CHARS = 3000
+MAX_ARTICLE_CHARS = 4000
+MAX_ARTICLE_PREVIEW_CHARS = 2000
+
 
 def build_rewrite_context(state: CrawlState, knowledge: Knowledge) -> str:
     """Build the user prompt for the rewrite tool."""
     parts = [
-        f"## Source Content\n{state.raw_text[:3000]}",
+        f"## Source Content\n{state.raw_text[:MAX_SOURCE_CHARS]}",
         f"\n## Keyword: {state.keyword}",
         f"## Article Type: {state.content_type}",
         f"## Target Words: {state.target_words}",
@@ -31,7 +36,7 @@ def build_seo_context(state: CrawlState) -> str:
     """Build the user prompt for the SEO tool."""
     return (
         f"## Article Title\n{state.title}\n\n"
-        f"## Article (first 2000 chars)\n{state.article_md[:2000]}\n\n"
+        f"## Article (first {MAX_ARTICLE_PREVIEW_CHARS} chars)\n{state.article_md[:MAX_ARTICLE_PREVIEW_CHARS]}\n\n"
         f"## Keyword: {state.keyword}"
     )
 
@@ -39,7 +44,7 @@ def build_seo_context(state: CrawlState) -> str:
 def build_verify_context(state: CrawlState) -> str:
     """Build the user prompt for the verify tool."""
     return (
-        f"## Original Source (first 3000 chars)\n{state.raw_text[:3000]}\n\n"
-        f"## Generated Article (first 4000 chars)\n{state.article_md[:4000]}\n\n"
+        f"## Original Source (first {MAX_SOURCE_CHARS} chars)\n{state.raw_text[:MAX_SOURCE_CHARS]}\n\n"
+        f"## Generated Article (first {MAX_ARTICLE_CHARS} chars)\n{state.article_md[:MAX_ARTICLE_CHARS]}\n\n"
         f"## Keyword: {state.keyword}"
     )
