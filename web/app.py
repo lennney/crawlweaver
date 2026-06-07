@@ -17,7 +17,7 @@ app.include_router(router)
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse(name="dashboard.html", context={"request": request})
+    return templates.TemplateResponse(request, "dashboard.html")
 
 
 @app.get("/api/health")
