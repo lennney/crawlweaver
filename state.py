@@ -94,6 +94,9 @@ class CrawlState(BaseModel):
     # Verify (populated by verify tool)
     verify: Optional[VerifyResult] = None
 
+    # Failure report (Factor #7: set on failure)
+    failure_report: Optional[dict] = None
+
     # Execution state (unified with business state)
     step: Step = Step.PENDING
     events: list[CrawlEvent] = Field(default_factory=list)

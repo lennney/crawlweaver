@@ -21,6 +21,7 @@ class SitePattern(BaseModel):
     best_prompt: str = ""
     avg_quality: float = 0.0
     sample_count: int = 0
+    total_quality: float = 0.0
 
 
 class FailureRecord(BaseModel):
@@ -67,6 +68,22 @@ class Knowledge(BaseModel):
         if prompt_path not in self.prompt_stats:
             self.prompt_stats[prompt_path] = PromptStats()
         self.prompt_stats[prompt_path].record(score)
+
+    def record_site_pattern(self, domain: str, extractor: str, prompt: str, quality: int):
+        """Record or update site pattern with moving average quality."""
+        if domain in self.site_patterns:
+            sp = self.site_patterns[domain]
+            sp.sample_count += 1
+            sp.total_quality += quality
+            sp.avg_quality = sp.total_quality / sp.sample_count
+        else:
+            self.site_patterns[domain] = SitePattern(
+                extractor=extractor,
+                best_prompt=prompt,
+                avg_quality=float(quality),
+                sample_count=1,
+                total_quality=float(quality),
+            )
 
     def best_prompt_for(self, source_type: str, candidates: list[str]) -> str:
         """Pick the prompt with highest avg score. Fallback to first candidate."""

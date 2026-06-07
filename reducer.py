@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from state import CrawlState, Step
 from knowledge import Knowledge
@@ -92,6 +93,14 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
             knowledge.record_crawl(state.url)
             if state.verify:
                 knowledge.record_quality("prompts/rewrite.md", state.verify.score)
+            # Factor #13: record site pattern
+            domain = urlparse(state.url).netloc
+            knowledge.record_site_pattern(
+                domain=domain,
+                extractor=state.source.value,
+                prompt="prompts/rewrite.md",
+                quality=state.verify.score,
+            )
             _checkpoint()
             logger.info(f"PASSED: {state.keyword} (score={state.verify.score})")
             return state
@@ -106,10 +115,17 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
             state = render(state)
             _checkpoint()
         else:
-            # Factor #7: Contact human via tool call
+            # Factor #7: Set structured failure report
             logger.warning(f"FAILED after {MAX_FIX_ATTEMPTS + 1} attempts: {state.keyword}")
             state.step = Step.FAILED
             state.error = f"Verification failed after {MAX_FIX_ATTEMPTS + 1} attempts"
+            state.failure_report = {
+                "url": state.url,
+                "keyword": state.keyword,
+                "error": state.error,
+                "step": state.step.value,
+                "attempts": state.attempts,
+            }
             knowledge.record_failure(state.url, state.error)
             _checkpoint()
 

@@ -133,6 +133,11 @@ def cmd_crawl(args):
         print(f"Score: {state.verify.score}/100 (passed={state.verify.passed})")
     if state.error:
         print(f"Error: {state.error}")
+    if state.failure_report:
+        print(f"\nFAILED - needs human review:")
+        print(f"  URL: {state.failure_report['url']}")
+        print(f"  Error: {state.failure_report['error']}")
+        print(f"  Attempts: {state.failure_report['attempts']}")
 
     # Print event timeline
     print(f"\nEvents ({len(state.events)}):")
