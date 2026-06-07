@@ -7,6 +7,7 @@ Loaded deterministically before reducer runs — not searched by LLM.
 
 import json
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -14,6 +15,9 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("crawler.knowledge")
+
+# Thread-safe lock for knowledge load/save cycle
+_knowledge_lock = threading.Lock()
 
 
 class SitePattern(BaseModel):
@@ -174,10 +178,32 @@ def load_knowledge(path: str | Path) -> Knowledge:
 
 
 def save_knowledge(knowledge: Knowledge, path: str | Path):
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    data = knowledge.model_dump()
-    # set → list for JSON serialization
-    data["crawled_urls"] = list(data["crawled_urls"])
-    p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    logger.info(f"Knowledge saved to {path}")
+    """Save knowledge to disk. Thread-safe via module lock."""
+    with _knowledge_lock:
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        data = knowledge.model_dump()
+        # set → list for JSON serialization
+        data["crawled_urls"] = list(data["crawled_urls"])
+        p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        logger.info(f"Knowledge saved to {path}")
+
+
+def load_and_save_knowledge(path: str | Path, fn):
+    """Thread-safe load → modify → save cycle.
+    
+    Usage:
+        def modify(knowledge):
+            knowledge.record_crawl(url)
+            return result
+        result = load_and_save_knowledge("knowledge.json", modify)
+    """
+    with _knowledge_lock:
+        knowledge = load_knowledge(path)
+        result = fn(knowledge)
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        data = knowledge.model_dump()
+        data["crawled_urls"] = list(data["crawled_urls"])
+        p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        return result

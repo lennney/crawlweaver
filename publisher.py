@@ -1,6 +1,7 @@
 """Static site publisher — generate index + RSS from output/ articles."""
 import re
 from datetime import datetime
+from html import escape
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, tostring
 
@@ -37,8 +38,10 @@ def generate_site(output_dir: Path, site_dir: Path, title: str = "AI Content Hub
         <div class="space-y-4">
 """
     for a in articles:
-        index_html += f'            <a href="{a["file"]}" class="block bg-gray-900 hover:bg-gray-800 rounded-lg p-4 transition-colors">\n'
-        index_html += f'                <h2 class="text-xl font-semibold text-blue-400">{a["title"]}</h2>\n'
+        fname = escape(a["file"])
+        atitle = escape(a["title"])
+        index_html += f'            <a href="{fname}" class="block bg-gray-900 hover:bg-gray-800 rounded-lg p-4 transition-colors">\n'
+        index_html += f'                <h2 class="text-xl font-semibold text-blue-400">{atitle}</h2>\n'
         index_html += f'            </a>\n'
 
     index_html += """        </div>
