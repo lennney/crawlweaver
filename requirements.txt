@@ -6,3 +6,5 @@ Jinja2
 Markdown
 youtube-transcript-api>=1.0
 python-dotenv
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0

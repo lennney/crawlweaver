@@ -47,6 +47,11 @@ def main():
     p_know.add_argument("--show", action="store_true", help="Show knowledge summary")
     p_know.add_argument("--path", default="knowledge.json")
 
+    # dashboard command
+    p_dash = sub.add_parser("dashboard", help="Launch web dashboard")
+    p_dash.add_argument("--port", type=int, default=8080)
+    p_dash.add_argument("--host", default="0.0.0.0")
+
     args = parser.parse_args()
 
     # Logging
@@ -63,6 +68,9 @@ def main():
         cmd_setup(args)
     elif args.command == "knowledge":
         cmd_knowledge(args)
+    elif args.command == "dashboard":
+        import uvicorn
+        uvicorn.run("web.app:app", host=args.host, port=args.port, reload=True)
     else:
         parser.print_help()
 
