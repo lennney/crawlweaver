@@ -3,13 +3,27 @@ import json
 import logging
 from html import escape
 from pathlib import Path
-from fastapi import APIRouter, BackgroundTasks, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from typing import Callable
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from task_queue import Job, JobStatus, TaskQueue
 
 logger = logging.getLogger("crawler.web")
 
 router = APIRouter(prefix="/api")
 DATA_DIR = Path(__file__).parent.parent
+
+# Will be set by app.py at import time
+_task_queue: "TaskQueue | None" = None
+
+
+def get_queue() -> "TaskQueue":
+    global _task_queue
+    if _task_queue is None:
+        from web.app import task_queue as tq
+        _task_queue = tq
+    return _task_queue
 
 
 @router.get("/stats")
@@ -47,66 +61,61 @@ async def stats():
 
 @router.get("/jobs")
 async def list_jobs():
-    """HTMX: return HTML jobs table."""
-    states_dir = DATA_DIR / "states"
-    jobs = []
-    if states_dir.exists():
-        for f in sorted(states_dir.glob("*.json"), reverse=True)[:50]:
-            try:
-                data = json.loads(f.read_text())
-                verify = data.get("verify")
-                jobs.append({
-                    "id": f.stem,
-                    "url": data.get("url", ""),
-                    "keyword": data.get("keyword", ""),
-                    "step": data.get("step", "unknown"),
-                    "score": verify.get("score") if verify else None,
-                })
-            except Exception:
-                continue
+    """HTMX: return HTML jobs table from task queue."""
+    tq = get_queue()
+    jobs = tq.list_jobs(limit=50)
+    stats = tq.stats()
 
     if not jobs:
         return HTMLResponse("<p class='text-gray-500'>No jobs yet. Submit one above!</p>")
 
     step_colors = {
-        "passed": "text-green-400",
-        "failed": "text-red-400",
         "pending": "text-gray-400",
-        "extracted": "text-blue-400",
-        "rewritten": "text-blue-400",
+        "running": "text-blue-400 animate-pulse",
+        "completed": "text-green-400",
+        "failed": "text-red-400",
     }
-    html = """<table class="w-full text-sm">
+    html = f"""<div class="flex gap-4 mb-4 text-sm">
+        <span class="text-gray-400">⏳ {stats.get('pending', 0)} pending</span>
+        <span class="text-blue-400">🔄 {stats.get('running', 0)} running</span>
+        <span class="text-green-400">✅ {stats.get('completed', 0)} done</span>
+        <span class="text-red-400">❌ {stats.get('failed', 0)} failed</span>
+    </div>"""
+    html += """<table class="w-full text-sm">
         <thead><tr class="text-left text-gray-500 border-b border-gray-700">
             <th class="pb-2 pr-4">URL</th>
             <th class="pb-2 pr-4">Keyword</th>
             <th class="pb-2 pr-4">Status</th>
-            <th class="pb-2">Score</th>
         </tr></thead><tbody>"""
     for j in jobs:
-        step = j["step"]
-        color = step_colors.get(step, "text-gray-300")
-        score = str(j["score"]) if j["score"] is not None else "—"
+        color = step_colors.get(j.status.value, "text-gray-300")
         html += f"""<tr class="border-b border-gray-800">
-            <td class="py-2 pr-4 text-gray-300 truncate max-w-xs">{escape(j['url'][:60])}</td>
-            <td class="py-2 pr-4 text-gray-400">{escape(j['keyword'])}</td>
-            <td class="py-2 pr-4 {color}">{escape(step)}</td>
-            <td class="py-2 text-gray-300">{score}</td>
+            <td class="py-2 pr-4 text-gray-300 truncate max-w-xs">{escape(j.url[:60])}</td>
+            <td class="py-2 pr-4 text-gray-400">{escape(j.keyword)}</td>
+            <td class="py-2 {color}">{escape(j.status.value)}</td>
         </tr>"""
     html += "</tbody></table>"
     return HTMLResponse(html)
 
 
 @router.post("/jobs")
-async def create_job(request: Request, bg: BackgroundTasks):
-    """Submit a new crawl job."""
+async def create_job(request: Request):
+    """Submit a new crawl job via task queue."""
     try:
         body = await request.json()
     except Exception:
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
     if not body.get("url"):
         return JSONResponse({"error": "url is required"}, status_code=400)
-    bg.add_task(_run_crawl, body)
-    return JSONResponse({"status": "submitted", "url": body.get("url")})
+
+    tq = get_queue()
+    job_id = tq.submit(
+        url=body["url"],
+        keyword=body.get("keyword", ""),
+        source=body.get("source", "youtube"),
+        content_type=body.get("content_type", "Beginner Guide"),
+    )
+    return JSONResponse({"status": "submitted", "job_id": job_id})
 
 
 @router.get("/knowledge")
@@ -187,30 +196,29 @@ async def get_article(name: str):
     """Serve a generated HTML article."""
     path = DATA_DIR / "output" / name
     if path.exists():
+        from fastapi.responses import FileResponse
         return FileResponse(path, media_type="text/html")
     return JSONResponse({"error": "not found"}, status_code=404)
 
 
-def _run_crawl(body: dict):
-    """Background task: run crawl pipeline."""
-    try:
+def make_crawl_handler() -> Callable[[Job], None]:
+    """Create a crawl handler for the task queue."""
+    def handler(job: Job):
         from state import make_state
         from knowledge import load_knowledge, save_knowledge
         from llm import LLM
         from reducer import crawl
 
         state = make_state(
-            url=body.get("url", ""),
-            source=body.get("source", "youtube"),
-            keyword=body.get("keyword", ""),
+            url=job.url, source=job.source,
+            keyword=job.keyword, content_type=job.content_type,
         )
         knowledge = load_knowledge(DATA_DIR / "knowledge.json")
         llm = LLM()
         states_dir = DATA_DIR / "states"
         states_dir.mkdir(parents=True, exist_ok=True)
-        state_path = states_dir / f"{hash(state.url) & 0xFFFFFF:06x}.json"
+        state_path = states_dir / f"{job.id}.json"
         state = crawl(state, knowledge, llm, state_path=str(state_path))
         save_knowledge(knowledge, DATA_DIR / "knowledge.json")
-        logger.info(f"Crawl completed: {state.url} → {state.step.value}")
-    except Exception as e:
-        logger.exception(f"Crawl failed for {body.get('url', '?')}: {e}")
+        job.result = {"step": state.step.value, "score": state.verify.score if state.verify else None}
+    return handler

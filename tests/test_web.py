@@ -89,3 +89,17 @@ async def test_dashboard_renders():
         assert resp.status_code == 200
         assert "AI Crawler" in resp.text
         assert "htmx" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_create_job_endpoint():
+    """POST /api/jobs should submit to queue."""
+    from httpx import AsyncClient, ASGITransport
+    from web.app import app
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post("/api/jobs", json={"url": "https://example.com", "keyword": "test"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "submitted"
+        assert "job_id" in data
