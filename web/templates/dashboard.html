@@ -3,57 +3,63 @@
 <div class="max-w-7xl mx-auto p-6">
     <h1 class="text-3xl font-bold mb-8">🕷️ AI Crawler v2</h1>
 
-    <!-- Stats Cards -->
+    <!-- Stats Cards: 5 cards (URLs, Queue, Score, Cost, Coverage) -->
     <div id="stats" hx-get="/api/stats" hx-trigger="load" hx-swap="innerHTML"
-         class="grid grid-cols-4 gap-4 mb-8">
+         class="grid grid-cols-5 gap-4 mb-8">
         <div class="bg-gray-900 rounded-lg p-4"><div class="text-gray-400 text-sm">Loading...</div></div>
     </div>
 
-    <!-- New Job Form -->
-    <div class="bg-gray-900 rounded-lg p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4">New Crawl Job</h2>
-        <form hx-post="/api/jobs" hx-swap="none" class="flex gap-4 items-end flex-wrap">
-            <div class="flex-1 min-w-[200px]">
-                <label class="block text-sm text-gray-400 mb-1">URL</label>
-                <input name="url" type="url" placeholder="https://youtube.com/watch?v=..."
-                       class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100">
-            </div>
-            <div class="w-48">
-                <label class="block text-sm text-gray-400 mb-1">Keyword</label>
-                <input name="keyword" type="text" placeholder="hiking tips"
-                       class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100">
-            </div>
-            <div class="w-32">
-                <label class="block text-sm text-gray-400 mb-1">Source</label>
-                <select name="source" class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100">
-                    <option value="youtube">YouTube</option>
-                    <option value="web">Web</option>
-                    <option value="reddit">Reddit</option>
-                </select>
-            </div>
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 rounded px-6 py-2 font-medium">
-                🚀 Crawl
-            </button>
-        </form>
-    </div>
-
-    <!-- Batch Import -->
-    <div class="bg-gray-900 rounded-lg p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4">📋 Batch Import</h2>
-        <form hx-post="/api/batch" hx-encoding="multipart/form-data"
-              hx-target="#batch-result" class="flex gap-4 items-end">
-            <div class="flex-1">
+    <!-- New Job Form + Batch Import -->
+    <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="col-span-2 bg-gray-900 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">New Crawl Job</h2>
+            <form hx-post="/api/jobs" hx-swap="none" class="flex gap-4 items-end flex-wrap">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm text-gray-400 mb-1">URL</label>
+                    <input name="url" type="url" placeholder="https://youtube.com/watch?v=..."
+                           class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100">
+                </div>
+                <div class="w-48">
+                    <label class="block text-sm text-gray-400 mb-1">Keyword</label>
+                    <input name="keyword" type="text" placeholder="hiking tips"
+                           class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100">
+                </div>
+                <div class="w-32">
+                    <label class="block text-sm text-gray-400 mb-1">Source</label>
+                    <select name="source" class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100">
+                        <option value="youtube">YouTube</option>
+                        <option value="web">Web</option>
+                        <option value="reddit">Reddit</option>
+                    </select>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 rounded px-6 py-2 font-medium">
+                    🚀 Crawl
+                </button>
+            </form>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">📋 Batch Import</h2>
+            <form hx-post="/api/batch" hx-encoding="multipart/form-data"
+                  hx-target="#batch-result" class="flex flex-col gap-3">
                 <input name="file" type="file" accept=".csv"
                        class="w-full bg-gray-800 rounded px-3 py-2 text-gray-100 text-sm">
-            </div>
-            <button type="submit" class="bg-green-600 hover:bg-green-700 rounded px-6 py-2 font-medium">
-                📤 Import CSV
-            </button>
-        </form>
-        <div id="batch-result" class="mt-2 text-sm"></div>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 rounded px-6 py-2 font-medium">
+                    📤 Import CSV
+                </button>
+            </form>
+            <div id="batch-result" class="mt-2 text-sm"></div>
+        </div>
     </div>
 
-    <!-- Jobs Table -->
+    <!-- Review Queue -->
+    <div class="bg-gray-900 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">👁️ Review Queue</h2>
+        <div hx-get="/api/review" hx-trigger="load, every 5s" hx-swap="innerHTML" id="review-queue">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Recent Jobs -->
     <div class="bg-gray-900 rounded-lg p-6 mb-8">
         <h2 class="text-xl font-semibold mb-4">Recent Jobs</h2>
         <div hx-get="/api/jobs" hx-trigger="load, every 10s" hx-swap="innerHTML" id="jobs-table">
@@ -61,16 +67,31 @@
         </div>
     </div>
 
-    <!-- Articles -->
+    <!-- Quality Trends -->
     <div class="bg-gray-900 rounded-lg p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4">📚 Generated Articles</h2>
+        <h2 class="text-xl font-semibold mb-4">📈 Quality Trends</h2>
+        <div hx-get="/api/trends" hx-trigger="load" hx-swap="innerHTML" id="trends-chart">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Generated Articles + Publish Button -->
+    <div class="bg-gray-900 rounded-lg p-6 mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">📚 Generated Articles</h2>
+            <button hx-post="/api/publish" hx-swap="innerHTML" hx-target="#publish-result"
+                    class="bg-purple-600 hover:bg-purple-700 rounded px-4 py-2 font-medium text-sm">
+                🌐 Publish Site
+            </button>
+        </div>
+        <div id="publish-result" class="mb-3 text-sm"></div>
         <div hx-get="/api/articles" hx-trigger="load" hx-swap="innerHTML" id="articles-list">
             <p class="text-gray-500">Loading...</p>
         </div>
     </div>
 
-    <!-- Knowledge Panel -->
-    <div class="bg-gray-900 rounded-lg p-6">
+    <!-- Knowledge Panel (Site Patterns) -->
+    <div class="bg-gray-900 rounded-lg p-6 mb-8">
         <h2 class="text-xl font-semibold mb-4">🧠 Knowledge Panel</h2>
         <div id="knowledge-panel">
             <h3 class="text-lg font-medium text-gray-300 mb-3">Site Patterns</h3>
@@ -81,32 +102,16 @@
     </div>
 
     <!-- Keyword Coverage -->
-    <div class="bg-gray-900 rounded-lg p-6 mt-8">
+    <div class="bg-gray-900 rounded-lg p-6 mb-8">
         <h2 class="text-xl font-semibold mb-4">🎯 Keyword Coverage</h2>
         <div hx-get="/api/coverage" hx-trigger="load" hx-swap="innerHTML" id="coverage-panel">
             <p class="text-gray-500">Loading...</p>
         </div>
     </div>
 
-    <!-- Review Queue -->
-    <div class="bg-gray-900 rounded-lg p-6 mt-8">
-        <h2 class="text-xl font-semibold mb-4">👁️ Review Queue</h2>
-        <div hx-get="/api/review" hx-trigger="load, every 5s" hx-swap="innerHTML" id="review-queue">
-            <p class="text-gray-500">Loading...</p>
-        </div>
-    </div>
-
-    <!-- Quality Trends -->
-    <div class="bg-gray-900 rounded-lg p-6 mt-8">
-        <h2 class="text-xl font-semibold mb-4">📈 Quality Trends</h2>
-        <div hx-get="/api/trends" hx-trigger="load" hx-swap="innerHTML" id="trends-chart">
-            <p class="text-gray-500">Loading...</p>
-        </div>
-    </div>
-
-    <!-- Cost Panel -->
-    <div class="bg-gray-900 rounded-lg p-6 mt-8">
-        <h2 class="text-xl font-semibold mb-4">💰 Cost Tracking</h2>
+    <!-- Cost Breakdown -->
+    <div class="bg-gray-900 rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">💰 Cost Breakdown</h2>
         <div hx-get="/api/costs" hx-trigger="load" hx-swap="innerHTML" id="cost-panel">
             <p class="text-gray-500">Loading...</p>
         </div>

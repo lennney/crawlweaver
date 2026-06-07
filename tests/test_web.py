@@ -300,3 +300,30 @@ async def test_trends_endpoint_with_scores(tmp_path, monkeypatch):
         assert "<svg" in resp.text
         assert "polyline" in resp.text
         assert "avg:" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_publish_endpoint(tmp_path, monkeypatch):
+    """Publish endpoint should generate static site."""
+    from httpx import AsyncClient, ASGITransport
+    from web.app import app
+    import web.api as api_module
+
+    monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
+
+    # Create mock output articles
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "test.html").write_text("<html><body><h1>Test Article</h1></body></html>")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post("/api/publish")
+        assert resp.status_code == 200
+        assert "Site generated" in resp.text
+        assert "1 articles" in resp.text
+
+        # Verify site was generated
+        site_dir = tmp_path / "site"
+        assert (site_dir / "index.html").exists()
+        assert (site_dir / "test.html").exists()
+        assert (site_dir / "feed.xml").exists()

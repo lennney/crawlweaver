@@ -38,19 +38,35 @@ async def stats():
         data = {}
 
     urls_count = len(data.get("crawled_urls", []))
-    patterns_count = len(data.get("site_patterns", {}))
     prompt_stats = data.get("prompt_stats", {})
     avg_score = 0.0
     if prompt_stats:
         scores = [s.get("avg_score", 0) for s in prompt_stats.values() if s.get("count", 0) > 0]
         avg_score = sum(scores) / len(scores) if scores else 0
-    failures_count = len(data.get("failure_log", []))
+
+    # Cost stats
+    article_costs = data.get("article_costs", [])
+    total_cost = sum(a.get("total_cost_usd", 0) for a in article_costs)
+
+    # Coverage stats
+    coverage = data.get("keyword_coverage", {})
+    covered_count = sum(1 for v in coverage.values() if v.get("covered"))
+
+    # Queue stats (try to get from task queue)
+    queue_pending = 0
+    try:
+        tq = get_queue()
+        q_stats = tq.stats()
+        queue_pending = q_stats.get("pending", 0) + q_stats.get("running", 0)
+    except Exception:
+        pass
 
     cards = [
-        ("Crawled URLs", str(urls_count), "text-blue-400"),
-        ("Site Patterns", str(patterns_count), "text-green-400"),
-        ("Avg Score", f"{avg_score:.0f}", "text-yellow-400"),
-        ("Failures", str(failures_count), "text-red-400"),
+        ("URLs", str(urls_count), "text-blue-400"),
+        ("Queue", str(queue_pending), "text-purple-400"),
+        ("Score", f"{avg_score:.0f}", "text-yellow-400"),
+        ("Cost", f"${total_cost:.4f}", "text-red-400"),
+        ("Coverage", f"{covered_count}/{len(coverage)}", "text-green-400"),
     ]
     html = ""
     for label, value, color in cards:
@@ -325,6 +341,16 @@ async def quality_trends():
     </svg>"""
 
     return HTMLResponse(svg)
+
+
+@router.post("/publish")
+async def publish_site():
+    """Generate static site from published articles."""
+    from publisher import generate_site
+    site_dir = DATA_DIR / "site"
+    generate_site(DATA_DIR / "output", site_dir, title="AI Content Hub")
+    count = len(list(site_dir.glob("*.html"))) - 1  # exclude index
+    return HTMLResponse(f'<span class="text-green-400">✅ Site generated: {count} articles + index + RSS</span>')
 
 
 @router.get("/coverage")
