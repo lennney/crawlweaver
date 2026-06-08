@@ -118,13 +118,26 @@ class CrawlState(BaseModel):
             message=message,
             data=data if data else {},
         ))
+        # Cap events to prevent unbounded growth in long pipelines
+        if len(self.events) > 20:
+            self.events = self.events[-20:]
 
     def last_verify_errors(self) -> list[str]:
-        """Get errors from the most recent verify event — for context injection."""
+        """Get all unique errors from verify events — for context injection.
+
+        Accumulates errors across all fix attempts (Manus pattern: never
+        compress error traces, helps avoid repeating mistakes).
+        Returns newest errors first, deduplicated.
+        """
+        seen: set[str] = set()
+        all_errors: list[str] = []
         for evt in reversed(self.events):
             if evt.tool == "verify" and not evt.success:
-                return evt.data.get("issues", [])
-        return []
+                for err in evt.data.get("issues", []):
+                    if err not in seen:
+                        seen.add(err)
+                        all_errors.append(err)
+        return all_errors
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

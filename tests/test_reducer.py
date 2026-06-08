@@ -126,6 +126,38 @@ def test_last_verify_errors():
     assert "Missing FAQ" in errors
 
 
+def test_last_verify_errors_accumulates_across_attempts():
+    """Errors from all verify failures should be accumulated, not just the latest."""
+    state = make_state("https://example.com")
+
+    # Attempt 1 fails
+    state.append_event("verify", False, "Failed",
+                       issues=["Low quality", "Missing FAQ"])
+    # Attempt 2 fails with different issues
+    state.append_event("verify", False, "Failed",
+                       issues=["Bad formatting", "Low quality"])  # "Low quality" is duplicate
+
+    errors = state.last_verify_errors()
+    # Should have all unique errors, newest first
+    assert "Bad formatting" in errors
+    assert "Missing FAQ" in errors
+    assert "Low quality" in errors
+    # "Low quality" should appear only once (deduped)
+    assert errors.count("Low quality") == 1
+
+
+def test_events_capped_at_20():
+    """Events list should be capped at 20 to prevent unbounded growth."""
+    state = make_state("https://example.com")
+    for i in range(25):
+        state.append_event("test", True, f"event {i}")
+
+    assert len(state.events) == 20
+    # Should keep the most recent 20
+    assert state.events[-1].message == "event 24"
+    assert state.events[0].message == "event 5"
+
+
 # --- Sprint 4: Reducer integration tests ---
 
 def test_reducer_auto_skip_failed_urls():
