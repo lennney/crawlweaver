@@ -53,6 +53,24 @@ def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optiona
         _checkpoint()
         return state
 
+    # Sprint 4: Auto-skip URLs with repeated failures
+    if knowledge.should_skip(state.url):
+        fail_count = knowledge.failure_count(state.url)
+        logger.warning(f"URL failed {fail_count} times, skipping: {state.url}")
+        state.step = Step.FAILED
+        state.error = f"Auto-skipped: {fail_count} previous failures"
+        state.append_event("skip", True, f"Failed {fail_count}x before")
+        _checkpoint()
+        return state
+
+    # Sprint 4: Knowledge-guided extraction strategy
+    domain = urlparse(state.url).netloc
+    strategy = knowledge.get_best_strategy(domain)
+    if strategy:
+        extractor, prompt = strategy
+        state.preferred_extractor = extractor
+        logger.info(f"Using learned strategy for {domain}: extractor={extractor}")
+
     # Cost tracking: collect CostRecord after each LLM step
     cost_records: list = []
 

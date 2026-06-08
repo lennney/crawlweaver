@@ -21,6 +21,9 @@ class Source(str, Enum):
     YOUTUBE = "youtube"
     WEB = "web"
     REDDIT = "reddit"
+    TWITTER = "twitter"
+    WECHAT = "wechat"
+    ZHIHU = "zhihu"
 
 
 class Step(str, Enum):
@@ -97,6 +100,9 @@ class CrawlState(BaseModel):
 
     # Failure report (Factor #7: set on failure)
     failure_report: Optional[dict] = None
+
+    # Sprint 4: Knowledge-guided extraction strategy
+    preferred_extractor: str = ""  # Set by reducer from site_patterns
 
     # Execution state (unified with business state)
     step: Step = Step.PENDING

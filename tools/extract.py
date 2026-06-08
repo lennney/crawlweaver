@@ -16,14 +16,31 @@ logger = logging.getLogger("crawler.extract")
 
 
 def extract(state: CrawlState) -> CrawlState:
-    """Extract raw content from a URL. Dispatches by source type."""
+    """Extract raw content from a URL. Dispatches by source type.
+
+    Sprint 4: If state.preferred_extractor is set (from knowledge site_patterns),
+    it overrides the default extractor for the source type.
+    Sprint 5: Added Twitter, WeChat, Zhihu source types.
+    """
     try:
-        if state.source == Source.YOUTUBE:
+        # Sprint 4: Use preferred extractor if knowledge suggests one
+        preferred = state.preferred_extractor.lower().strip() if state.preferred_extractor else ""
+
+        if state.source == Source.YOUTUBE and preferred != "web":
             _extract_youtube(state)
-        elif state.source == Source.WEB:
+        elif state.source == Source.WEB or preferred == "web":
             _extract_web(state)
         elif state.source == Source.REDDIT:
             _extract_reddit(state)
+        elif state.source == Source.TWITTER:
+            from tools.extractors.twitter import extract_twitter
+            extract_twitter(state)
+        elif state.source == Source.WECHAT:
+            from tools.extractors.wechat import extract_wechat
+            extract_wechat(state)
+        elif state.source == Source.ZHIHU:
+            from tools.extractors.zhihu import extract_zhihu
+            extract_zhihu(state)
         else:
             raise ValueError(f"Unknown source: {state.source}")
 
@@ -36,6 +53,40 @@ def extract(state: CrawlState) -> CrawlState:
         logger.error(f"Extract failed: {e}")
 
     return state
+
+
+def detect_source(url: str) -> str:
+    """Auto-detect source type from URL.
+
+    Returns a Source enum value string. Useful for CLI --source auto-detection.
+    Falls back to 'web' for unknown URLs.
+
+    Sprint 5: Added Twitter, WeChat, Zhihu detection.
+    """
+    url_lower = url.lower()
+
+    # YouTube
+    if any(d in url_lower for d in ["youtube.com", "youtu.be"]):
+        return "youtube"
+
+    # Twitter/X
+    if any(d in url_lower for d in ["twitter.com", "x.com"]):
+        return "twitter"
+
+    # WeChat
+    if "mp.weixin.qq.com" in url_lower:
+        return "wechat"
+
+    # Zhihu
+    if "zhihu.com" in url_lower:
+        return "zhihu"
+
+    # Reddit
+    if "reddit.com" in url_lower:
+        return "reddit"
+
+    # Default: generic web
+    return "web"
 
 
 def _extract_youtube(state: CrawlState):

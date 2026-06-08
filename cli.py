@@ -33,7 +33,7 @@ def main():
     p_setup = sub.add_parser("setup", help="First-run setup (YouTube cookies)")
     p_setup.add_argument("--check", action="store_true", help="Check if cookies are valid")
     p_crawl.add_argument("url", help="URL to crawl")
-    p_crawl.add_argument("--source", default="youtube", choices=["youtube", "web", "reddit"])
+    p_crawl.add_argument("--source", default="youtube", choices=["youtube", "web", "reddit", "twitter", "wechat", "zhihu"])
     p_crawl.add_argument("--keyword", default="", help="Target keyword")
     p_crawl.add_argument("--content-type", default="Beginner Guide")
     p_crawl.add_argument("--target-words", type=int, default=1200)
@@ -65,6 +65,12 @@ def main():
     p_publish.add_argument("--site-dir", default="site", help="Output site directory")
     p_publish.add_argument("--title", default="AI Content Hub")
 
+    # cron command
+    p_cron = sub.add_parser("cron", help="Run scheduled crawl from cron_config.yaml")
+    p_cron.add_argument("--config", default="cron_config.yaml", help="Cron config file")
+    p_cron.add_argument("--dry-run", action="store_true", help="Show jobs without executing")
+    p_cron.add_argument("--knowledge", default="knowledge.json")
+
     args = parser.parse_args()
 
     # Logging
@@ -93,6 +99,8 @@ def main():
         article_count = len(list(site_dir.glob("*.html"))) - 1  # exclude index
         print(f"Site generated: {args.site_dir}/")
         print(f"  index.html + {article_count} articles + feed.xml")
+    elif args.command == "cron":
+        cmd_cron(args)
     else:
         parser.print_help()
 
@@ -264,6 +272,68 @@ def cmd_batch(args):
     # Summary
     stats = tq.stats()
     print(f"\nBatch complete: {stats['completed']} passed, {stats['failed']} failed out of {len(rows)}")
+
+
+def cmd_cron(args):
+    """Run scheduled crawl from cron_config.yaml."""
+    import yaml
+
+    config_path = Path(args.config)
+    if not config_path.exists():
+        print(f"❌ Config not found: {config_path}")
+        print("   Create one with: cp cron_config.yaml.example cron_config.yaml")
+        sys.exit(1)
+
+    with open(config_path, encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    jobs = config.get("jobs", [])
+    if not jobs:
+        print("No jobs in cron config")
+        return
+
+    # Auto-detect source from URL if not specified
+    from tools.extract import detect_source
+
+    print(f"Cron: {len(jobs)} jobs from {config_path}")
+    print("-" * 50)
+
+    for i, job in enumerate(jobs, 1):
+        url = job.get("url", "").strip()
+        keyword = job.get("keyword", "").strip()
+        source = job.get("source", "").strip() or detect_source(url)
+        content_type = job.get("content_type", "Beginner Guide")
+
+        if not url:
+            print(f"  [{i}] SKIP: no URL")
+            continue
+
+        print(f"  [{i}] {keyword or url}")
+        print(f"      source={source}, type={content_type}")
+
+        if args.dry_run:
+            continue
+
+        # Execute crawl
+        state = make_state(url=url, source=source, keyword=keyword, content_type=content_type)
+        knowledge = load_knowledge(args.knowledge)
+        llm = LLM()
+
+        state_dir = Path(args.knowledge).parent / "states"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        import hashlib as _hashlib
+        state_hash = _hashlib.md5(state.url.encode()).hexdigest()[:6]
+        auto_state_path = str(state_dir / f"{state_hash}.json")
+
+        state = crawl(state, knowledge, llm, state_path=auto_state_path)
+        save_knowledge(knowledge, args.knowledge)
+
+        status = "✅" if state.step.value == "review" else "❌"
+        score = state.verify.score if state.verify else 0
+        print(f"      {status} {state.step.value} (score={score})")
+
+    print("-" * 50)
+    print("Cron run complete")
 
 
 if __name__ == "__main__":

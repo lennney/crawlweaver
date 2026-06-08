@@ -118,6 +118,26 @@ class Knowledge(BaseModel):
                 best = p
         return best
 
+    def get_best_strategy(self, domain: str) -> tuple[str, str] | None:
+        """Get best extractor + prompt for a domain from historical patterns.
+
+        Returns (extractor, prompt_path) if sample_count >= 3, else None.
+        The reducer uses this to pick the optimal extraction strategy
+        for known domains instead of using defaults.
+        """
+        pattern = self.site_patterns.get(domain)
+        if pattern and pattern.sample_count >= 3 and pattern.extractor:
+            return (pattern.extractor, pattern.best_prompt)
+        return None
+
+    def should_skip(self, url: str, max_failures: int = 3) -> bool:
+        """Check if URL should be skipped due to repeated failures.
+
+        Returns True if the URL has failed >= max_failures times total.
+        Prevents wasting LLM calls on URLs that consistently fail.
+        """
+        return self.failure_count(url) >= max_failures
+
     def failure_count(self, url: str) -> int:
         return sum(r.count for r in self.failure_log if r.url == url)
 

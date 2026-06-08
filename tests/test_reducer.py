@@ -124,3 +124,50 @@ def test_last_verify_errors():
     errors = state.last_verify_errors()
     assert "Low quality" in errors
     assert "Missing FAQ" in errors
+
+
+# --- Sprint 4: Reducer integration tests ---
+
+def test_reducer_auto_skip_failed_urls():
+    """Reducer should skip URLs that have failed 3+ times."""
+    from reducer import crawl
+    from knowledge import Knowledge
+
+    state = make_state("https://always-fails.com", keyword="test")
+    knowledge = Knowledge()
+    # Simulate 3 previous failures
+    knowledge.record_failure("https://always-fails.com", "403")
+    knowledge.record_failure("https://always-fails.com", "403")
+    knowledge.record_failure("https://always-failed.com", "403")
+
+    # Also add the exact URL 3 times
+    knowledge = Knowledge()
+    for _ in range(3):
+        knowledge.record_failure("https://always-fails.com", "timeout")
+
+    from llm import LLM
+    llm = LLM()
+    result = crawl(state, knowledge, llm)
+
+    assert result.step.value == "failed"
+    assert "Auto-skipped" in result.error
+    assert any(e.tool == "skip" for e in result.events)
+
+
+def test_reducer_sets_preferred_extractor():
+    """Reducer should set preferred_extractor when strategy is available."""
+    from knowledge import Knowledge
+
+    knowledge = Knowledge()
+    for _ in range(5):
+        knowledge.record_site_pattern("blog.example.com", "web", "prompts/rewrite.md", 85)
+
+    strategy = knowledge.get_best_strategy("blog.example.com")
+    assert strategy is not None
+    extractor, prompt = strategy
+    assert extractor == "web"
+
+    # Verify state field works
+    state = make_state("https://blog.example.com/post", keyword="test")
+    state.preferred_extractor = extractor
+    assert state.preferred_extractor == "web"

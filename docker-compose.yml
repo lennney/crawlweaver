@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  crawler:
+    build: .
+    container_name: ai-crawler-v2
+    restart: unless-stopped
+    ports:
+      - "${CRAWLER_PORT:-8080}:8080"
+    volumes:
+      - crawler-data:/data
+      - ./cache:/app/cache
+      - ./yt_cookies.txt:/app/yt_cookies.txt:ro
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - DATA_DIR=/data
+      - CRAWLER_BASE_URL=${CRAWLER_BASE_URL:-https://example.com}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  crawler-data:
+    driver: local

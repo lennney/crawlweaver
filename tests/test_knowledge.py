@@ -42,3 +42,87 @@ def test_failure_report_field():
     assert state.failure_report is None
     state.failure_report = {"url": "https://example.com", "error": "test"}
     assert state.failure_report["error"] == "test"
+
+
+# --- Sprint 4: Knowledge self-evolution tests ---
+
+def test_get_best_strategy_enough_samples():
+    """get_best_strategy returns (extractor, prompt) when sample_count >= 3."""
+    k = Knowledge()
+    k.record_site_pattern("blog.example.com", "web", "prompts/rewrite.md", 85)
+    k.record_site_pattern("blog.example.com", "web", "prompts/rewrite.md", 90)
+    k.record_site_pattern("blog.example.com", "web", "prompts/rewrite.md", 88)
+
+    result = k.get_best_strategy("blog.example.com")
+    assert result is not None
+    extractor, prompt = result
+    assert extractor == "web"
+    assert prompt == "prompts/rewrite.md"
+
+
+def test_get_best_strategy_not_enough_samples():
+    """get_best_strategy returns None when sample_count < 3."""
+    k = Knowledge()
+    k.record_site_pattern("newsite.com", "web", "prompts/rewrite.md", 80)
+    k.record_site_pattern("newsite.com", "web", "prompts/rewrite.md", 75)
+
+    assert k.get_best_strategy("newsite.com") is None
+
+
+def test_get_best_strategy_unknown_domain():
+    """get_best_strategy returns None for unknown domains."""
+    k = Knowledge()
+    assert k.get_best_strategy("unknown.com") is None
+
+
+def test_get_best_strategy_no_extractor():
+    """get_best_strategy returns None when extractor is empty."""
+    k = Knowledge()
+    k.site_patterns["empty.com"] = SitePattern(
+        extractor="", best_prompt="p.md", avg_quality=80.0,
+        sample_count=5, total_quality=400.0,
+    )
+    assert k.get_best_strategy("empty.com") is None
+
+
+def test_should_skip_threshold():
+    """should_skip returns True when failure_count >= max_failures."""
+    k = Knowledge()
+    k.record_failure("https://bad.com", "403")
+    k.record_failure("https://bad.com", "403")
+    assert not k.should_skip("https://bad.com")  # 2 < 3 default
+
+    k.record_failure("https://bad.com", "403")
+    assert k.should_skip("https://bad.com")  # 3 >= 3
+
+
+def test_should_skip_custom_threshold():
+    """should_skip respects custom max_failures."""
+    k = Knowledge()
+    k.record_failure("https://flaky.com", "timeout")
+    assert k.should_skip("https://flaky.com", max_failures=1)
+    assert not k.should_skip("https://flaky.com", max_failures=5)
+
+
+def test_should_skip_different_errors():
+    """should_skip counts ALL failures regardless of error type."""
+    k = Knowledge()
+    k.record_failure("https://bad.com", "403")
+    k.record_failure("https://bad.com", "timeout")
+    k.record_failure("https://bad.com", "500")
+    assert k.should_skip("https://bad.com")  # 3 total, even though errors differ
+
+
+def test_should_skip_unknown_url():
+    """should_skip returns False for URLs with no failures."""
+    k = Knowledge()
+    assert not k.should_skip("https://never-failed.com")
+
+
+def test_preferred_extractor_field():
+    """CrawlState has preferred_extractor field."""
+    from state import make_state
+    state = make_state("https://example.com", keyword="test")
+    assert state.preferred_extractor == ""
+    state.preferred_extractor = "web"
+    assert state.preferred_extractor == "web"

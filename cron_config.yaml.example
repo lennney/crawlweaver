@@ -1,0 +1,29 @@
+# AI Crawler v2 — Cron Configuration
+#
+# Run with: python cli.py cron --config cron_config.yaml
+# Dry run:  python cli.py cron --dry-run
+#
+# Schedule via system cron:
+#   0 */6 * * * cd /path/to/ai-crawler-v2 && python cli.py cron >> /var/log/crawler.log 2>&1
+
+jobs:
+  - url: "https://www.youtube.com/watch?v=example1"
+    keyword: "hiking tips"
+    source: youtube
+    content_type: "Beginner Guide"
+
+  - url: "https://example.com/article"
+    keyword: "python tutorial"
+    # source: auto-detected from URL
+
+  - url: "https://twitter.com/user/status/123"
+    keyword: "AI news"
+    source: twitter
+
+  - url: "https://mp.weixin.qq.com/s/abc123"
+    keyword: "技术分享"
+    source: wechat
+
+  - url: "https://zhuanlan.zhihu.com/p/123456"
+    keyword: "深度学习入门"
+    source: zhihu
