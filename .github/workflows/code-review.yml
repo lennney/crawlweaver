@@ -1,0 +1,87 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for diff
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Open Code Review
+        run: npm install -g @alibaba-group/open-code-review
+
+      - name: Configure OCR with MiMo
+        env:
+          MIMO_API_KEY: ${{ secrets.MIMO_API_KEY }}
+          MIMO_BASE_URL: ${{ secrets.MIMO_BASE_URL }}
+        run: |
+          ocr config set llm.url "$MIMO_BASE_URL"
+          ocr config set llm.auth_token "$MIMO_API_KEY"
+          ocr config set llm.model "mimo-v2.5"
+          ocr config set llm.use_anthropic false
+          ocr config set language "English"
+
+      - name: Run Code Review
+        id: review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "Reviewing: $BASE_SHA..$HEAD_SHA"
+
+          # Run OCR and capture output
+          REVIEW=$(ocr review \
+            --from "$BASE_SHA" \
+            --to "$HEAD_SHA" \
+            --audience agent \
+            --background "PR #${PR_NUMBER}: ${PR_TITLE}" \
+            2>&1) || true
+
+          # Save to file for the comment step
+          echo "$REVIEW" > /tmp/ocr-review.txt
+
+          # Check if there are actual comments
+          if echo "$REVIEW" | grep -q "comment(s)"; then
+            echo "has_issues=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_issues=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post Review Comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          REVIEW=$(cat /tmp/ocr-review.txt)
+
+          gh pr comment "$PR_NUMBER" \
+            --body "## 🤖 AI Code Review (Open Code Review + MiMo)
+
+          <details>
+          <summary>Review Results</summary>
+
+          \`\`\`
+          ${REVIEW}
+          \`\`\`
+
+          </details>
+
+          _Automated review by [Open Code Review](https://github.com/alibaba/open-code-review) + Xiaomi MiMo-V2.5_"
