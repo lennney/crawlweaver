@@ -87,7 +87,7 @@ async def test_dashboard_renders():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/")
         assert resp.status_code == 200
-        assert "AI Crawler" in resp.text
+        assert "CrawlWeaver" in resp.text
         assert "htmx" in resp.text
 
 

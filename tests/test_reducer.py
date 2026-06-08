@@ -1,4 +1,4 @@
-"""Basic tests for AI Crawler v2."""
+"""Basic tests for CrawlWeaver."""
 
 import sys
 from pathlib import Path

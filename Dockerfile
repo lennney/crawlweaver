@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
-LABEL maintainer="AI Crawler v2"
-LABEL description="12-Factor AI Crawler — content extraction + SEO generation"
+LABEL maintainer="CrawlWeaver"
+LABEL description="CrawlWeaver — 12-Factor content extraction + SEO generation"
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \

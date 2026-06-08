@@ -1,4 +1,4 @@
-# AI Crawler v2 — 12-Factor Agents 重构
+# CrawlWeaver — 12-Factor Agents Architecture
 
 > 版本: v2.1
 > 日期: 2026-06-07

@@ -1,4 +1,4 @@
-# AI Crawler v2 — Cron Configuration
+# CrawlWeaver — Cron Configuration
 #
 # Run with: python cli.py cron --config cron_config.yaml
 # Dry run:  python cli.py cron --dry-run

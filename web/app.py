@@ -22,7 +22,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title="AI Crawler v2", version="2.0", lifespan=lifespan)
+app = FastAPI(title="CrawlWeaver", lifespan=lifespan)
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 from web.api import router

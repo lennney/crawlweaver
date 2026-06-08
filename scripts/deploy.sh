@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "============================================"
-echo "  AI Crawler v2 — Deployment"
+echo "  CrawlWeaver — Deployment"
 echo "============================================"
 echo ""
 
@@ -52,7 +52,7 @@ echo "[2/5] Checking configuration..."
 if [[ ! -f "$PROJECT_DIR/.env" ]]; then
     echo "  ⚠️  No .env file found. Creating from template..."
     cat > "$PROJECT_DIR/.env" << 'EOF'
-# AI Crawler v2 — Environment Configuration
+# CrawlWeaver — Environment Configuration
 DEEPSEEK_API_KEY=your-api-key-here
 LLM_BASE_URL=https://api.deepseek.com
 LLM_MODEL=deepseek-chat

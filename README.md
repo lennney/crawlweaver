@@ -1,4 +1,4 @@
-# AI Crawler v2
+# CrawlWeaver
 
 > 12-Factor AI Agent for content extraction, SEO article generation, and knowledge self-evolution.
 
@@ -27,8 +27,8 @@ Built following [12-Factor Agents](https://github.com/humanlayer/12-factor-agent
 
 ```bash
 # Clone
-git clone https://github.com/lennney/ai-crawler-v2.git
-cd ai-crawler-v2
+git clone https://github.com/lennney/crawlweaver.git
+cd crawlweaver
 
 # Install deps
 pip install -r requirements.txt

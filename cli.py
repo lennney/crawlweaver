@@ -23,7 +23,7 @@ from reducer import crawl
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Crawler v2 — 12-Factor Agents")
+    parser = argparse.ArgumentParser(description="CrawlWeaver — 12-Factor Agents")
     sub = parser.add_subparsers(dest="command")
 
     # crawl command
