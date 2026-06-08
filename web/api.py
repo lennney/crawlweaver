@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from task_queue import Job, JobStatus, TaskQueue
+from knowledge import load_knowledge
 
 logger = logging.getLogger("crawler.web")
 
@@ -32,10 +33,9 @@ def get_queue() -> "TaskQueue":
 async def stats():
     """HTMX: return HTML stats cards."""
     k_path = DATA_DIR / "knowledge.json"
-    if k_path.exists():
-        data = json.loads(k_path.read_text())
-    else:
-        data = {}
+    knowledge = load_knowledge(k_path)
+    data = knowledge.model_dump()
+    data["crawled_urls"] = list(data.get("crawled_urls", []))
 
     urls_count = len(data.get("crawled_urls", []))
     prompt_stats = data.get("prompt_stats", {})
@@ -59,7 +59,7 @@ async def stats():
         q_stats = tq.stats()
         queue_pending = q_stats.get("pending", 0) + q_stats.get("running", 0)
     except Exception:
-        pass
+        logger.warning("Failed to get queue stats", exc_info=True)
 
     cards = [
         ("URLs", str(urls_count), "text-blue-400"),
@@ -143,10 +143,8 @@ async def get_knowledge(request: Request):
     panel = request.query_params.get("panel")
 
     if panel == "patterns":
-        if k_path.exists():
-            data = json.loads(k_path.read_text())
-        else:
-            data = {"site_patterns": {}}
+        knowledge = load_knowledge(k_path)
+        data = knowledge.model_dump()
 
         patterns = data.get("site_patterns", {})
         if not patterns:
@@ -181,9 +179,10 @@ async def get_knowledge(request: Request):
         return HTMLResponse(html)
 
     # Default: return full knowledge JSON (API consumers)
-    if k_path.exists():
-        return JSONResponse(json.loads(k_path.read_text()))
-    return JSONResponse({"crawled_urls": [], "site_patterns": {}, "prompt_stats": {}})
+    knowledge = load_knowledge(k_path)
+    data = knowledge.model_dump()
+    data["crawled_urls"] = list(data.get("crawled_urls", []))
+    return JSONResponse(data)
 
 
 @router.get("/articles")
@@ -212,7 +211,13 @@ async def list_articles():
 @router.get("/articles/{name}")
 async def get_article(name: str):
     """Serve a generated HTML article."""
-    path = DATA_DIR / "output" / name
+    # Path traversal protection
+    if "/" in name or "\\" in name or ".." in name:
+        return JSONResponse({"error": "invalid name"}, status_code=400)
+    output_dir = (DATA_DIR / "output").resolve()
+    path = (output_dir / name).resolve()
+    if not path.is_relative_to(output_dir):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     if path.exists():
         from fastapi.responses import FileResponse
         return FileResponse(path, media_type="text/html")
@@ -252,11 +257,8 @@ async def batch_import(request: Request):
 async def get_costs():
     """HTMX: return cost statistics HTML panel."""
     k_path = DATA_DIR / "knowledge.json"
-    if not k_path.exists():
-        return HTMLResponse("<p class='text-gray-500'>No cost data yet.</p>")
-
-    data = json.loads(k_path.read_text())
-    article_costs = data.get("article_costs", [])
+    knowledge = load_knowledge(k_path)
+    article_costs = knowledge.model_dump().get("article_costs", [])
 
     if not article_costs:
         return HTMLResponse("<p class='text-gray-500'>No cost data yet.</p>")
@@ -311,6 +313,7 @@ async def quality_trends():
                         "step": data.get("step", ""),
                     })
             except Exception:
+                logger.debug("Skipping corrupted state file: %s", f.name)
                 continue
 
     if not scores:
@@ -357,11 +360,8 @@ async def publish_site():
 async def get_coverage():
     """HTMX: return keyword coverage HTML panel."""
     k_path = DATA_DIR / "knowledge.json"
-    if not k_path.exists():
-        return HTMLResponse("<p class='text-gray-500'>No data yet.</p>")
-
-    data = json.loads(k_path.read_text())
-    coverage = data.get("keyword_coverage", {})
+    knowledge = load_knowledge(k_path)
+    coverage = knowledge.model_dump().get("keyword_coverage", {})
 
     if not coverage:
         return HTMLResponse("<p class='text-gray-500'>No keywords tracked yet.</p>")
@@ -409,6 +409,7 @@ async def review_queue():
                         "html_path": data.get("html_path", ""),
                     })
             except Exception:
+                logger.debug("Skipping corrupted state file: %s", f.name)
                 continue
 
     if not pending:
@@ -448,25 +449,41 @@ async def review_queue():
 @router.post("/review/{job_id}/approve")
 async def approve_article(job_id: str):
     """Approve an article — change step from REVIEW to PASSED."""
+    import fcntl
     state_path = DATA_DIR / "states" / f"{job_id}.json"
     if not state_path.exists():
         return JSONResponse({"error": "not found"}, status_code=404)
-    data = json.loads(state_path.read_text())
-    data["step"] = "passed"
-    state_path.write_text(json.dumps(data, indent=2))
+    with open(state_path, "r+", encoding="utf-8") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            data = json.loads(f.read())
+            data["step"] = "passed"
+            f.seek(0)
+            f.truncate()
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
     return HTMLResponse('<span class="text-green-400">✅ Approved</span>')
 
 
 @router.post("/review/{job_id}/reject")
 async def reject_article(job_id: str):
     """Reject an article — change step from REVIEW to FAILED."""
+    import fcntl
     state_path = DATA_DIR / "states" / f"{job_id}.json"
     if not state_path.exists():
         return JSONResponse({"error": "not found"}, status_code=404)
-    data = json.loads(state_path.read_text())
-    data["step"] = "failed"
-    data["error"] = "Rejected by human reviewer"
-    state_path.write_text(json.dumps(data, indent=2))
+    with open(state_path, "r+", encoding="utf-8") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            data = json.loads(f.read())
+            data["step"] = "failed"
+            data["error"] = "Rejected by human reviewer"
+            f.seek(0)
+            f.truncate()
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
     return HTMLResponse('<span class="text-red-400">❌ Rejected</span>')
 
 

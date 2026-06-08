@@ -94,7 +94,7 @@ def _extract_youtube(state: CrawlState):
         import glob
         subs = glob.glob(f"/tmp/yt_{video_id}*.vtt") + glob.glob(f"/tmp/yt_{video_id}*.txt")
         if subs:
-            raw = open(subs[0]).read()
+            raw = Path(subs[0]).read_text(encoding="utf-8")
             # If VTT format, strip timestamps and headers
             if subs[0].endswith(".vtt"):
                 raw = _parse_vtt(raw)

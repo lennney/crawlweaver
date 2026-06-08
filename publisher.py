@@ -57,8 +57,11 @@ def generate_site(output_dir: Path, site_dir: Path, title: str = "AI Content Hub
 
 
 def generate_rss(output_dir: Path, site_dir: Path, title: str = "AI Content Hub",
-                 base_url: str = "https://example.com"):
+                 base_url: str | None = None):
     """Generate RSS 2.0 feed."""
+    import os
+    if base_url is None:
+        base_url = os.environ.get("CRAWLER_BASE_URL", "https://example.com")
     rss = Element("rss", version="2.0")
     channel = SubElement(rss, "channel")
     SubElement(channel, "title").text = title

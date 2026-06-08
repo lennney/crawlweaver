@@ -137,7 +137,8 @@ def cmd_crawl(args):
     # Auto-create states dir for WAL (Factor #6)
     state_dir = Path(args.knowledge).parent / "states"
     state_dir.mkdir(parents=True, exist_ok=True)
-    state_hash = f"{hash(state.url) & 0xFFFFFF:06x}"
+    import hashlib as _hashlib
+    state_hash = _hashlib.md5(state.url.encode()).hexdigest()[:6]
     auto_state_path = str(state_dir / f"{state_hash}.json")
 
     # Run reducer with WAL auto-save

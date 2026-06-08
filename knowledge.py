@@ -163,34 +163,39 @@ class Knowledge(BaseModel):
 
 def load_knowledge(path: str | Path) -> Knowledge:
     p = Path(path)
-    if not p.exists():
-        logger.info(f"No knowledge file at {path}, starting fresh")
-        return Knowledge()
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        # set is not JSON-serializable, convert list back
-        if "crawled_urls" in data and isinstance(data["crawled_urls"], list):
-            data["crawled_urls"] = set(data["crawled_urls"])
-        return Knowledge.model_validate(data)
-    except Exception as e:
-        logger.warning(f"Failed to load knowledge: {e}, starting fresh")
-        return Knowledge()
+    with _knowledge_lock:
+        if not p.exists():
+            logger.info(f"No knowledge file at {path}, starting fresh")
+            return Knowledge()
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            # set is not JSON-serializable, convert list back
+            if "crawled_urls" in data and isinstance(data["crawled_urls"], list):
+                data["crawled_urls"] = set(data["crawled_urls"])
+            return Knowledge.model_validate(data)
+        except Exception as e:
+            logger.warning(f"Failed to load knowledge: {e}, starting fresh")
+            return Knowledge()
 
 
 def save_knowledge(knowledge: Knowledge, path: str | Path):
-    """Save knowledge to disk. Thread-safe via module lock."""
+    """Save knowledge to disk. Thread-safe via module lock. Atomic write."""
+    import os
     with _knowledge_lock:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         data = knowledge.model_dump()
         # set → list for JSON serialization
         data["crawled_urls"] = list(data["crawled_urls"])
-        p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        # Atomic write: write to temp file, then rename
+        tmp_path = p.with_suffix(".json.tmp")
+        tmp_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        os.rename(str(tmp_path), str(p))
         logger.info(f"Knowledge saved to {path}")
 
 
 def load_and_save_knowledge(path: str | Path, fn):
-    """Thread-safe load → modify → save cycle.
+    """Thread-safe load → modify → save cycle. Atomic write.
     
     Usage:
         def modify(knowledge):
@@ -198,12 +203,15 @@ def load_and_save_knowledge(path: str | Path, fn):
             return result
         result = load_and_save_knowledge("knowledge.json", modify)
     """
+    import os
     with _knowledge_lock:
-        knowledge = load_knowledge(path)
-        result = fn(knowledge)
         p = Path(path)
+        knowledge = load_knowledge(p)
+        result = fn(knowledge)
         p.parent.mkdir(parents=True, exist_ok=True)
         data = knowledge.model_dump()
         data["crawled_urls"] = list(data["crawled_urls"])
-        p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp_path = p.with_suffix(".json.tmp")
+        tmp_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        os.rename(str(tmp_path), str(p))
         return result

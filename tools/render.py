@@ -26,6 +26,7 @@ def render(state: CrawlState) -> CrawlState:
 
     try:
         from jinja2 import Environment, FileSystemLoader
+        from markupsafe import Markup
 
         # Convert markdown to HTML sections
         sections_html = _markdown_to_sections(state.article_md)
@@ -37,7 +38,7 @@ def render(state: CrawlState) -> CrawlState:
             template_file = None
 
         if template_file:
-            env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False)
+            env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=True)
             template = env.get_template(template_file)
         else:
             template = _basic_template()
@@ -47,8 +48,8 @@ def render(state: CrawlState) -> CrawlState:
             meta_description=state.seo.meta_description,
             keyword=state.keyword,
             article_md=state.article_md,
-            sections_html=sections_html,
-            faq_html=faq_html,
+            sections_html=Markup(sections_html),
+            faq_html=Markup(faq_html),
             source_url=state.url,
             source_title=state.title,
             accessed_date=datetime.now().strftime("%Y-%m-%d"),
