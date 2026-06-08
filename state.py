@@ -7,12 +7,16 @@ Events list IS the short-term history. State fields ARE the working memory.
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from pydantic import BaseModel, Field
+
+# Maximum events to retain in memory (prevents unbounded growth in long pipelines)
+MAX_EVENTS = 20
 
 
 # --- Enums ---
@@ -74,6 +78,9 @@ class CrawlState(BaseModel):
     (raw_text, article_md, seo) live together — Factor #5.
     """
 
+    # Class-level lock (shared across instances, avoids pickle issues)
+    _event_lock: ClassVar[threading.Lock] = threading.Lock()
+
     # Identity
     url: str = ""
     source: Source = Source.YOUTUBE
@@ -111,16 +118,18 @@ class CrawlState(BaseModel):
     attempts: int = 0
 
     def append_event(self, tool: str, success: bool, message: str = "", **data):
-        self.events.append(CrawlEvent(
+        event = CrawlEvent(
             step=self.step.value,
             tool=tool,
             success=success,
             message=message,
             data=data if data else {},
-        ))
-        # Cap events to prevent unbounded growth in long pipelines
-        if len(self.events) > 20:
-            self.events = self.events[-20:]
+        )
+        # Thread-safe: lock prevents lost updates from concurrent append + slice
+        with CrawlState._event_lock:
+            self.events.append(event)
+            if len(self.events) > MAX_EVENTS:
+                self.events = self.events[-MAX_EVENTS:]
 
     def last_verify_errors(self) -> list[str]:
         """Get all unique errors from verify events — for context injection.

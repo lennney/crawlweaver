@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI Crawler v2 — One-click VPS deployment
+# CrawlWeaver — One-click VPS deployment
 #
 # Usage:
 #   bash scripts/deploy.sh              # Deploy with Docker Compose
@@ -61,7 +61,8 @@ CRAWLER_BASE_URL=https://example.com
 EOF
     echo "  📝 Created .env — please edit with your API key"
     echo "     vim $PROJECT_DIR/.env"
-    exit 1
+    echo "     After editing, run this script again."
+    exit 0
 fi
 echo "  ✅ .env exists"
 
@@ -91,7 +92,7 @@ done
 # Step 4: Nginx reverse proxy (optional)
 echo "[5/5] Configuring nginx..."
 if [[ -n "$DOMAIN" ]] && command -v nginx &>/dev/null; then
-    NGINX_CONF="/etc/nginx/sites-available/ai-crawler"
+    NGINX_CONF="/etc/nginx/sites-available/crawlweaver"
     cat > "$NGINX_CONF" << NGINX
 server {
     listen 80;
