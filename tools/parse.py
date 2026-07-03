@@ -47,16 +47,33 @@ def parse_json(text: str) -> dict:
 
 def parse_llm_output(text: str, min_length: int = 50) -> str:
     """Validate and clean LLM text output.
+
+    Handles multiple thinking/reasoning formats:
+    - <think>...</think> (XML-style, e.g. minimax-m3)
+    - Thinking. 1. ... (plain-text numbered, OpenCode Go)
+    - All other known prefixes from reasoning models
     
-    - Strips <think> tags
     - Checks minimum length
     - Raises ValueError on empty/invalid output
     """
     if not text or not text.strip():
         raise ValueError("LLM returned empty output")
 
-    # Strip <think>...</think> blocks (some models include reasoning)
-    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    cleaned = text
+
+    # 1. Strip <think>...</think> blocks (common in minimax-m3, GLM, etc.)
+    cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL).strip()
+
+    # 2. Strip "Thinking. N. ..." blocks that appear before actual output.
+    #    These start at the beginning and end when actual content markers appear.
+    #    Markers: markdown headings, code blocks, JSON, or triple dashes.
+    THINKING_PATTERN = (
+        r"^Thinking\.\s+\d+\.\s+"
+        r".*?"
+        r"(?=(?:\n\n|\n)(?:#{1,3}\s|```|(?:\*\*[\w\s]+\*\*:?)|-{3,}|\n\n))"
+    )
+    cleaned = re.sub(THINKING_PATTERN, "", cleaned, count=1,
+                     flags=re.DOTALL | re.MULTILINE).strip()
 
     if len(cleaned) < min_length:
         raise ValueError(f"LLM output too short ({len(cleaned)} < {min_length}): {cleaned[:100]}")

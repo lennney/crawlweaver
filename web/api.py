@@ -136,6 +136,46 @@ async def create_job(request: Request):
     return JSONResponse({"status": "submitted", "job_id": job_id})
 
 
+@router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    """Get job status by ID (for progress polling)."""
+    import json, fcntl
+    tq = get_queue()
+    job = tq.get_job(job_id)
+    if not job:
+        # Check state file for completed jobs
+        state_path = DATA_DIR / "states" / f"{job_id}.json"
+        if state_path.exists():
+            with open(state_path, "r") as f:
+                fcntl.flock(f, fcntl.LOCK_SH)
+                try:
+                    data = json.loads(f.read())
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+            return JSONResponse({
+                "status": "completed",
+                "job_id": job_id,
+                "result": {
+                    "step": data.get("step", ""),
+                    "score": data.get("verify", {}).get("score", 0),
+                    "title": data.get("title", ""),
+                    "word_count": data.get("word_count", 0),
+                    "html_path": data.get("html_path", ""),
+                },
+            })
+        return JSONResponse({"error": "not found"}, status_code=404)
+
+    return JSONResponse({
+        "status": job.status.value,
+        "job_id": job.id,
+        "error": job.error,
+        "result": {
+            "url": job.url,
+            "keyword": job.keyword,
+        },
+    })
+
+
 @router.get("/knowledge")
 async def get_knowledge(request: Request):
     """Knowledge data — supports ?panel=patterns for HTML table."""

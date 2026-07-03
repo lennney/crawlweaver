@@ -28,6 +28,13 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 from web.api import router
 app.include_router(router)
 
+# Bidirectional bot integrations
+try:
+    from bot.feishu import router as feishu_router
+    app.include_router(feishu_router)
+except ImportError:
+    pass  # Feishu SDK not installed
+
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):

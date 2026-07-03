@@ -126,12 +126,14 @@ class LLM:
         model = os.getenv("LLM_MODEL", "deepseek-chat")
 
         if api_key:
+            retry_max_tokens = max_tokens
             for attempt in range(3):
                 try:
                     client = self._get_client(api_key, base_url)
                     resp = client.chat.completions.create(
                         model=model, messages=messages,
-                        max_tokens=max_tokens, temperature=temperature,
+                        max_tokens=retry_max_tokens, temperature=temperature,
+                        extra_body={"thinking": {"type": "disabled"}},
                     )
                     usage = resp.usage
                     if usage:
@@ -140,7 +142,25 @@ class LLM:
                             usage={"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens},
                             model=model,
                         )
-                    return resp.choices[0].message.content.strip()
+                    # Get content: check both content and reasoning_content
+                    msg = resp.choices[0].message
+                    content = (msg.content or "").strip()
+                    
+                    # If content is empty but reasoning exists, the model
+                    # spent all tokens on reasoning. Retry with 2x budget.
+                    if not content:
+                        reasoning = getattr(msg, "reasoning_content", None)
+                        if reasoning and attempt < 2:
+                            retry_max_tokens = min(retry_max_tokens * 2, 65536)
+                            logger.info(
+                                f"Model {model} returned empty content "
+                                f"(reasoning={len(str(reasoning))} chars). "
+                                f"Retrying with max_tokens={retry_max_tokens}"
+                            )
+                            time.sleep(2 ** attempt)
+                            continue
+                    return content
+
                 except Exception as e:
                     logger.warning(f"DeepSeek attempt {attempt+1}/3 failed: {e}")
                     if attempt < 2:

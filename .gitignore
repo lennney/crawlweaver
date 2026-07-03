@@ -17,3 +17,8 @@ cookies.txt
 # IDE
 .vscode/
 .idea/
+
+# Runtime state
+states/
+*.db
+.claude/

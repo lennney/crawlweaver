@@ -45,7 +45,7 @@ def rewrite(state: CrawlState, llm: LLM, knowledge: Knowledge) -> CrawlState:
         result = parse_llm_output(llm.call(
             system=system_prompt,
             user=user_prompt,
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=0.7,
             cache_step=f"rewrite{cache_suffix}",
             cache_input=state.raw_text[:500],

@@ -45,7 +45,7 @@ def seo(state: CrawlState, llm: LLM) -> CrawlState:
         result = llm.call(
             system=_get_seo_prompt(),
             user=user_prompt,
-            max_tokens=512,
+            max_tokens=2048,
             temperature=0.3,
             cache_step="seo",
             cache_input=state.article_md[:300],

@@ -18,6 +18,7 @@
 | 失败处理 | 结构化 failure_report | Factor #7: 失败时通知人类 |
 | WAL 模式 | 每步自动 checkpoint | Factor #6: 崩溃可恢复 |
 | Web 框架 | FastAPI + Jinja2 + HTMX | 轻量级，无 JS 构建步骤 |
+| 飞书集成 | lark-oapi SDK Webhook 模式 | 官方 SDK 自动处理验签/事件分发 |
 
 ## 目录结构
 
@@ -27,7 +28,24 @@ ai-crawler-v2/
 ├── state.py           # CrawlState 模型 (含 failure_report)
 ├── llm.py             # LLM 客户端（DeepSeek → Ollama fallback）
 ├── knowledge.py       # Knowledge 模型 (含 site_patterns, record_site_pattern)
-├── context.py         # Context Engineering — 常量: MAX_SOURCE_CHARS, MAX_ARTICLE_CHARS, MAX_ARTICLE_PREVIEW_CHARS
+├── context.py         # Context Engineering — 常量
+├── reducer.py         # 纯函数控制流 (extract → rewrite → seo → render → verify)
+├── task_queue.py      # 任务队列 (生产消费模式)
+├── publisher.py       # 静态站点生成
+├── cli.py             # CLI 入口
+├── bot/               # ← 2026-06-28 新增：飞书集成
+│   ├── feishu.py      #   Webhook 路由 + SDK 事件分发 + trigger_crawl 完整流程
+│   ├── cards.py       #   飞书交互卡片 JSON DSL 模板
+│   └── url_parser.py  #   URL 智能解析 (80% rules + 20% LLM)
+├── web/
+│   ├── app.py         # FastAPI 应用入口（自动挂载 feishu router）
+│   └── api.py         # REST API + HTMX 端点
+├── tools/             # 各步骤工具函数（纯函数）
+├── cache/llm/         # LLM 响应缓存
+├── states/            # 任务状态文件（每步 checkpoint）
+├── output/            # 生成的文章 HTML
+├── site/              # 静态站点输出
+└── .env               # 环境变量（不含秘钥，秘钥在 systemd）
 ├── tools/
 │   ├── __init__.py
 │   ├── extract.py     # YouTube/Web/Reddit 提取

@@ -40,7 +40,7 @@ def verify(state: CrawlState, llm: LLM, min_score: int = 70) -> CrawlState:
         result = llm.call(
             system=VERIFY_PROMPT,
             user=user_prompt,
-            max_tokens=1024,
+            max_tokens=4096,
             temperature=0.3,
         )
 
