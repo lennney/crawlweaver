@@ -22,3 +22,9 @@ cookies.txt
 states/
 *.db
 .claude/
+.pi/
+
+# Virtual environment
+.venv/
+attack-chains.yaml
+pocs/
