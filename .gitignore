@@ -28,3 +28,6 @@ states/
 .venv/
 attack-chains.yaml
 pocs/
+
+# Workspace
+.codegraph/
