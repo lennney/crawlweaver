@@ -162,16 +162,3 @@ bash scripts/deploy.sh --port 8080
 
 MIT
 
----
-
-## Integrated Pipelines & Adapters
-
-This repository also serves as a monorepo for content production pipelines and data source adapters:
-
-| Module | Path | Origin |
-|---|---|---|
-| YouTube Content Factory | `pipelines/youtube-content/` | `youtube-content-factory` (archived) |
-| YouTube → Article Pipeline | `pipelines/youtube-to-article/` | `youtube-to-article` (archived) |
-| News Crawler Adapter | `adapters/news/` | `news_crawler` (archived) |
-
-See [`pipelines/README.md`](pipelines/README.md) and [`adapters/README.md`](adapters/README.md) for details.
