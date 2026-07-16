@@ -1,0 +1,14 @@
+# Tag 列表 — 每行一个，用于社媒趋势搜索
+# 行首 # 号会被自动忽略
+movie
+kdrama
+film
+edit
+netflix
+recommendations
+series
+drama
+cinema
+tvshow
+影视推荐
+fyp

@@ -1,0 +1,46 @@
+# ============================================================
+# Default pipeline configuration — youtube-to-article
+# ============================================================
+
+steps:
+  - component: youtube_extract
+    id: extract
+    config:
+      output_dir: output/raw
+      cookies_path: ""    # set via --cookies or COOKIES_PATH env
+      proxy_http: ""      # set via --proxy or HTTP_PROXY env
+
+  - component: ai_rewrite
+    id: rewrite
+    config:
+      prompt_file: prompts/rewrite_article.md
+
+  - component: youtube_frames
+    id: frames
+    config:
+      output_dir: output/images
+      cookies_path: ""
+      proxy_http: ""
+
+  - component: convert_webp
+    id: webp
+    config:
+      quality: 85
+
+  - component: seo_metadata
+    id: seo
+    config:
+      prompt_file: prompts/seo_metadata.md
+      site_name: MakeDIYHub
+
+  - component: html_render
+    id: render
+    config:
+      template: diyhub/article.html
+      output_dir: output/html
+      site_url: https://makediyhub.com
+      site_name: MakeDIYHub
+
+  - component: content_check
+    id: check
+    config: {}

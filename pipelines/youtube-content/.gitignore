@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.DS_Store
+*.db
+
+# refarch hooks (路径可能因机器而异)
+.hooks/
+.claude/
+handover.sh

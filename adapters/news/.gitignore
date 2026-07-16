@@ -1,0 +1,5 @@
+# Generated data + local config
+data/
+.env
+__pycache__/
+*.pyc
