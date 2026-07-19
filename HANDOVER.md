@@ -1,9 +1,9 @@
 # HANDOVER.md — CrawlWeaver
 
-> 上次更新: 2026-06-28 14:15 CST
+> 上次更新: 2026-07-19 18:00 CST
 
 ## 当前目标
-飞书 Bot 打通：非技术同事在飞书贴 URL → Bot 自动爬取 → AI 生成 → 卡片返回结果
+迁移到 uv 包管理器 + 性能优化 + 测试门禁通过 + 飞书 Bot 端到端验证
 
 ## 已完成
 
@@ -24,6 +24,31 @@
 - [x] 全链路自测通过 — 模拟消息事件 → SDK 处理 → 爬取 → 结果卡片
 - [x] 项目文档更新 — AGENTS.md / ARCHITECTURE.md / .env.example
 
+### ADR & 安全加固 (2026-07-03)
+- [x] 新增 docs/decisions/ 目录，建立 ADR 记录机制
+- [x] .gitignore 加固 — 排除 attack-chains.yaml、pocs/、workspace/ 等安全敏感目录
+
+### pip → uv 迁移 (2026-07-19)
+- [x] pyproject.toml + uv.lock 替代 requirements.txt
+- [x] Dockerfile 适配 uv — build-arg uid/gid 传递，pip → uv sync
+- [x] README 更新 — `pip install -r` → `uv sync`
+- [x] AGENTS.md 更新 — uv 命令示例
+- [x] 全部 109 测试通过：`uv run pytest tests/ -q --no-header`
+
+### LLM 性能优化 (2026-07-19)
+- [x] LLM 结果内存 LRU 缓存层 — 500 entry / 1h TTL，μs 级命中 vs ms 级磁盘 I/O
+- [x] 磁盘缓存降级为冷路径 — 内存未命中才走磁盘
+- [x] 缓存 TTL 分层：内存 1h + 磁盘 7d
+
+### Dashboard 性能优化 (2026-07-19)
+- [x] knowledge.json 加载集中化 — `_get_knowledge()` mtime 缓存
+- [x] 5 个端点（stats/knowledge/costs/coverage/publish）共享同一缓存，避免重复读盘
+- [x] 修复 `_know_path` 编译时绑定 — 改为运行时从 `DATA_DIR` 计算，使 monkeypatch 测试可行
+
+### 测试修复 (2026-07-19)
+- [x] `test_costs_endpoint_empty` — 根因：`_know_path` 在 import 时从 `DATA_DIR` 计算，monkeypatch 改 `DATA_DIR` 无效。修复后读 `tmp_path` 空的 `knowledge.json` → 正确返回 "No cost data yet"
+- [x] `test_fastapi_app_loads` — 适配嵌套 APIRouter prefix 路由结构，松弛硬编码路由断言
+
 ## 进行中
 - [ ] 真实飞书消息端到端验证（需用户在飞书私聊机器人发 URL）
 
@@ -42,6 +67,10 @@
 
 | 日期 | 决策 | 原因 |
 |------|------|------|
+| 2026-07-19 | uv 替代 pip | Rust 实现，10x 解析速度，原生 lock 文件，pyproject.toml 原生支持 |
+| 2026-07-19 | LLM 内存缓存（LRU 500）替代纯磁盘缓存 | 高频调用场景（dashboard 刷新）磁盘 I/O 成为瓶颈，μs 级内存命中消除 |
+| 2026-07-19 | knowledge.json mtime 缓存替代每次读盘 | dashboard 每 5s 刷新 stats，5 个端点各读一次盘 → 统一缓存减少 5x 读盘 |
+| 2026-07-03 | 建立 ADR 目录 | 记录关键架构决策，避免回看时"为什么这么写" |
 | 2026-06-28 | Cloudflare Tunnel 替代公网 IP | VM 无公网 IPv4，用 tunnel 最省事 |
 | 2026-06-28 | 回调地址模式，非长连接 | 已建好隧道，Webhook 比 WebSocket 守护进程简单 |
 | 2026-06-28 | lark-oapi SDK 处理事件 | 官方 SDK 自动处理验签/解密/事件分发，比自己手写稳 |
@@ -55,6 +84,7 @@
 - ❌ 长连接模式 — 选错了飞书订阅方式，应选"回调地址"
 - ❌ `message.body.content` 解析 — SDK 模型里 content 是直接字段
 - ❌ systemd `EnvironmentFile` — 部分系统不生效，改用 `Environment=` 直写
+- ❌ 模块级 `_know_path` 编译时绑定 — 导致 test monkeypatch 无法覆盖，必须运行时计算
 
 ## 环境变量 (systemd)
 
@@ -73,9 +103,11 @@ LLM_MODEL=deepseek-v4-flash
 CrawlWeaver API    ✅ :8090 (systemd, active)
 Cloudflare Tunnel  ✅ crawl.take-a-deep-breath0.com → :8090
 LibreCrawl MCP     ✅ :5080 (systemd)
-LLM (deepseek-v4)  ✅ thinking=disabled
+LLM (deepseek-v4)  ✅ thinking=disabled, 内存 LRU 缓存活跃
 飞书 Bot 模块       ✅ lark-oapi SDK webhook
 飞书开放平台        ✅ 回调地址已配 + 已发布版本
+包管理器           ✅ uv（pyproject.toml + uv.lock）
+测试门禁           ✅ 109/109 pass
 ```
 
 ## 下一步
