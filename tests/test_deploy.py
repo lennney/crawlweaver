@@ -19,7 +19,7 @@ def test_dockerfile_uses_python():
     content = dockerfile.read_text()
     assert "python:" in content
     assert "WORKDIR /app" in content
-    assert "requirements.txt" in content
+    assert "uv.lock" in content
 
 
 def test_docker_compose_exists():

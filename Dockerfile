@@ -3,6 +3,10 @@ FROM python:3.12-slim
 LABEL maintainer="CrawlWeaver"
 LABEL description="CrawlWeaver — 12-Factor content extraction + SEO generation"
 
+# Install uv (fast Python package manager)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ENV UV_SYSTEM_PYTHON=1
+
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
@@ -11,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Python deps (cached layer)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
 # App code
 COPY *.py ./

@@ -52,13 +52,47 @@ class CostRecord:
 _cache_dir = Path(__file__).parent / "cache" / "llm"
 _clients: dict[str, Any] = {}
 
+# In-memory LRU cache — front layer before disk I/O
+_memory_cache: dict[str, tuple[float, Any]] = {}  # key -> (expiry_ts, result)
+_MEMORY_MAX = 500
+_MEMORY_TTL = 3600  # 1h memory cache; disk cache still has its own 7d TTL
+
 
 def _cache_key(step: str, text: str) -> str:
     return hashlib.sha256(f"{step}:::{text}".encode()).hexdigest()[:32]
 
 
+def _memory_cache_get(key: str) -> Any | None:
+    """Fast in-memory lookup — μs vs ms for disk."""
+    entry = _memory_cache.get(key)
+    if entry is None:
+        return None
+    expiry, result = entry
+    if time.time() < expiry:
+        return result
+    del _memory_cache[key]
+    return None
+
+
+def _memory_cache_set(key: str, result: Any):
+    """Store in memory with LRU eviction."""
+    _memory_cache[key] = (time.time() + _MEMORY_TTL, result)
+    if len(_memory_cache) > _MEMORY_MAX:
+        # Simple FIFO eviction — fine for this use case
+        oldest = next(iter(_memory_cache))
+        del _memory_cache[oldest]
+
+
 def cache_get(step: str, text: str, ttl: int = 604800) -> Any | None:
-    p = _cache_dir / f"{_cache_key(step, text)}.json"
+    key = _cache_key(step, text)
+
+    # 1. Memory cache (fast path)
+    cached = _memory_cache_get(key)
+    if cached is not None:
+        return cached
+
+    # 2. Disk cache (slow path, promote to memory)
+    p = _cache_dir / f"{key}.json"
     if not p.exists():
         return None
     try:
@@ -66,14 +100,21 @@ def cache_get(step: str, text: str, ttl: int = 604800) -> Any | None:
         if time.time() - data["ts"] > ttl:
             p.unlink(missing_ok=True)
             return None
+        _memory_cache_set(key, data["result"])
         return data["result"]
     except Exception:
         return None
 
 
 def cache_set(step: str, text: str, result: Any):
+    key = _cache_key(step, text)
+
+    # Memory cache
+    _memory_cache_set(key, result)
+
+    # Disk cache (persistence across restarts)
     _cache_dir.mkdir(parents=True, exist_ok=True)
-    p = _cache_dir / f"{_cache_key(step, text)}.json"
+    p = _cache_dir / f"{key}.json"
     p.write_text(json.dumps({"ts": time.time(), "result": result}, ensure_ascii=False),
                  encoding="utf-8")
 

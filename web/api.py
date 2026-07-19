@@ -10,12 +10,29 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from task_queue import Job, JobStatus, TaskQueue
-from knowledge import load_knowledge
+from knowledge import load_knowledge, Knowledge
 
 logger = logging.getLogger("crawler.web")
 
 router = APIRouter(prefix="/api")
 DATA_DIR = Path(__file__).parent.parent
+
+# Knowledge cache: avoid re-reading disk on every dashboard request
+_know_cache: "tuple[float, Knowledge] | None" = None  # (file_mtime, knowledge)
+
+
+def _get_knowledge() -> Knowledge:
+    """Load knowledge with mtime-based cache — reads disk once per change."""
+    global _know_cache
+    know_path = DATA_DIR / "knowledge.json"
+    current_mtime = know_path.stat().st_mtime if know_path.exists() else 0
+    if _know_cache is not None:
+        cache_mtime, cached = _know_cache
+        if current_mtime == cache_mtime:
+            return cached
+    k = load_knowledge(know_path)
+    _know_cache = (current_mtime, k)
+    return k
 
 # Will be set by app.py at import time
 _task_queue: "TaskQueue | None" = None
@@ -32,8 +49,7 @@ def get_queue() -> "TaskQueue":
 @router.get("/stats")
 async def stats():
     """HTMX: return HTML stats cards."""
-    k_path = DATA_DIR / "knowledge.json"
-    knowledge = load_knowledge(k_path)
+    knowledge = _get_knowledge()
     data = knowledge.model_dump()
     data["crawled_urls"] = list(data.get("crawled_urls", []))
 
@@ -179,11 +195,10 @@ async def get_job(job_id: str):
 @router.get("/knowledge")
 async def get_knowledge(request: Request):
     """Knowledge data — supports ?panel=patterns for HTML table."""
-    k_path = DATA_DIR / "knowledge.json"
     panel = request.query_params.get("panel")
 
     if panel == "patterns":
-        knowledge = load_knowledge(k_path)
+        knowledge = _get_knowledge()
         data = knowledge.model_dump()
 
         patterns = data.get("site_patterns", {})
@@ -219,7 +234,7 @@ async def get_knowledge(request: Request):
         return HTMLResponse(html)
 
     # Default: return full knowledge JSON (API consumers)
-    knowledge = load_knowledge(k_path)
+    knowledge = _get_knowledge()
     data = knowledge.model_dump()
     data["crawled_urls"] = list(data.get("crawled_urls", []))
     return JSONResponse(data)
@@ -296,8 +311,7 @@ async def batch_import(request: Request):
 @router.get("/costs")
 async def get_costs():
     """HTMX: return cost statistics HTML panel."""
-    k_path = DATA_DIR / "knowledge.json"
-    knowledge = load_knowledge(k_path)
+    knowledge = _get_knowledge()
     article_costs = knowledge.model_dump().get("article_costs", [])
 
     if not article_costs:
@@ -399,8 +413,7 @@ async def publish_site():
 @router.get("/coverage")
 async def get_coverage():
     """HTMX: return keyword coverage HTML panel."""
-    k_path = DATA_DIR / "knowledge.json"
-    knowledge = load_knowledge(k_path)
+    knowledge = _get_knowledge()
     coverage = knowledge.model_dump().get("keyword_coverage", {})
 
     if not coverage:

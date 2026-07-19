@@ -9,7 +9,7 @@
 - **Extraction**: BeautifulSoup4 + lxml，6 来源自动识别
 - **Storage**: JSON state files + LLM response cache
 - **Bot**: lark-oapi SDK (飞书 Webhook 模式)
-- **Package**: pip（venv）
+- **Package**: uv（Rust-based，替代 pip）
 
 ## 常用命令
 ```bash
@@ -25,8 +25,11 @@ curl -X POST http://localhost:8090/api/jobs \
 curl http://localhost:8090/api/jobs/<job_id>
 
 # 直接测试管线（CLI）
-cd ~/crawlweaver && .venv/bin/python cli.py crawl \
+cd ~/crawlweaver && uv run cli.py crawl \
   --url "https://example.com" --keyword "topic" --source web
+
+# 跑测试
+cd ~/crawlweaver && uv run pytest tests/ -q
 
 # 查看日志
 journalctl --user -u crawlweaver --no-pager -n 50
@@ -36,7 +39,7 @@ rm -rf cache/llm/ __pycache__/ states/
 systemctl --user restart crawlweaver
 
 # 诊断飞书集成
-cd ~/crawlweaver && .venv/bin/python debug_feishu.py check
+cd ~/crawlweaver && uv run debug_feishu.py check
 ```
 
 ## 架构

@@ -50,11 +50,11 @@ URL 进 → 内容提取 → AI 改写 → SEO 元数据 → HTML 渲染 → AI 
 ```bash
 git clone https://github.com/lennney/crawlweaver.git && cd crawlweaver
 
-pip install -r requirements.txt     # 安装依赖
+uv sync                                # 安装依赖（uv 替代 pip）
 export DEEPSEEK_API_KEY="***"       # 配置 LLM
 
-python cli.py crawl "https://example.com/article" --keyword "目标关键词"
-python cli.py dashboard --port 8080  # 启动 Dashboard
+uv run cli.py crawl "https://example.com/article" --keyword "目标关键词"
+uv run cli.py dashboard --port 8080  # 启动 Dashboard
 ```
 
 ---
