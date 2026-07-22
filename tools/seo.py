@@ -2,18 +2,23 @@
 
 Factor #4: LLM outputs structured JSON -> deterministic code uses it.
 """
+
 import logging
 from pathlib import Path
 
-from state import CrawlState, SeoMetadata, Step
-from llm import LLM
 from context import build_seo_context
+from llm import LLM
+from state import CrawlState, SeoMetadata, Step
 from tools.parse import parse_json
 
 logger = logging.getLogger("crawler.seo")
 
-_DEFAULT_SEO_PROMPT = """Generate SEO metadata for the given content. Return ONLY valid JSON.
-{"title_tag":"SEO title (max 60 chars)","meta_description":"Meta desc (140-160 chars)","url_slug":"/category/slug","h1":"Main heading"}"""
+_DEFAULT_SEO_PROMPT = (
+    "Generate SEO metadata for the given content. Return ONLY valid JSON.\n"
+    '{"title_tag":"SEO title (max 60 chars)",'
+    '"meta_description":"Meta desc (140-160 chars)",'
+    '"url_slug":"/category/slug","h1":"Main heading"}'
+)
 
 _seo_prompt_cache: str | None = None
 

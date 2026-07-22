@@ -6,8 +6,8 @@ from pathlib import Path
 # Add project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state import CrawlState, SeoMetadata, VerifyResult, CrawlEvent, make_state
-from knowledge import Knowledge, PromptStats, load_knowledge, save_knowledge
+from knowledge import Knowledge, load_knowledge, save_knowledge
+from state import CrawlState, SeoMetadata, make_state
 
 
 def test_make_state():
@@ -119,8 +119,7 @@ def test_last_verify_errors():
     state = make_state("https://example.com")
     assert state.last_verify_errors() == []
 
-    state.append_event("verify", False, "Failed",
-                       issues=["Low quality", "Missing FAQ"])
+    state.append_event("verify", False, "Failed", issues=["Low quality", "Missing FAQ"])
     errors = state.last_verify_errors()
     assert "Low quality" in errors
     assert "Missing FAQ" in errors
@@ -131,11 +130,11 @@ def test_last_verify_errors_accumulates_across_attempts():
     state = make_state("https://example.com")
 
     # Attempt 1 fails
-    state.append_event("verify", False, "Failed",
-                       issues=["Low quality", "Missing FAQ"])
+    state.append_event("verify", False, "Failed", issues=["Low quality", "Missing FAQ"])
     # Attempt 2 fails with different issues
-    state.append_event("verify", False, "Failed",
-                       issues=["Bad formatting", "Low quality"])  # "Low quality" is duplicate
+    state.append_event(
+        "verify", False, "Failed", issues=["Bad formatting", "Low quality"]
+    )  # "Low quality" is duplicate
 
     errors = state.last_verify_errors()
     # Should have all unique errors, newest first
@@ -160,10 +159,11 @@ def test_events_capped_at_20():
 
 # --- Sprint 4: Reducer integration tests ---
 
+
 def test_reducer_auto_skip_failed_urls():
     """Reducer should skip URLs that have failed 3+ times."""
-    from reducer import crawl
     from knowledge import Knowledge
+    from reducer import crawl
 
     state = make_state("https://always-fails.com", keyword="test")
     knowledge = Knowledge()
@@ -178,6 +178,7 @@ def test_reducer_auto_skip_failed_urls():
         knowledge.record_failure("https://always-fails.com", "timeout")
 
     from llm import LLM
+
     llm = LLM()
     result = crawl(state, knowledge, llm)
 

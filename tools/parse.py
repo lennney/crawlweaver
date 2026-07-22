@@ -3,17 +3,18 @@
 Factor #4: Tools are structured outputs.
 Centralizes JSON extraction and output validation.
 """
+
 import json
 import re
 
 
 def parse_json(text: str) -> dict:
     """Extract JSON from LLM response. Tries 3 strategies.
-    
+
     1. Direct json.loads
     2. Extract from ```json...``` code block
     3. Find first { to last }
-    
+
     Raises ValueError if no valid JSON found.
     """
     if not text or not text.strip():
@@ -38,7 +39,7 @@ def parse_json(text: str) -> dict:
     end = text.rfind("}")
     if start >= 0 and end > start:
         try:
-            return json.loads(text[start:end + 1])
+            return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
 
@@ -52,7 +53,7 @@ def parse_llm_output(text: str, min_length: int = 50) -> str:
     - <think>...</think> (XML-style, e.g. minimax-m3)
     - Thinking. 1. ... (plain-text numbered, OpenCode Go)
     - All other known prefixes from reasoning models
-    
+
     - Checks minimum length
     - Raises ValueError on empty/invalid output
     """
@@ -67,13 +68,12 @@ def parse_llm_output(text: str, min_length: int = 50) -> str:
     # 2. Strip "Thinking. N. ..." blocks that appear before actual output.
     #    These start at the beginning and end when actual content markers appear.
     #    Markers: markdown headings, code blocks, JSON, or triple dashes.
-    THINKING_PATTERN = (
+    thinking_pattern = (
         r"^Thinking\.\s+\d+\.\s+"
         r".*?"
         r"(?=(?:\n\n|\n)(?:#{1,3}\s|```|(?:\*\*[\w\s]+\*\*:?)|-{3,}|\n\n))"
     )
-    cleaned = re.sub(THINKING_PATTERN, "", cleaned, count=1,
-                     flags=re.DOTALL | re.MULTILINE).strip()
+    cleaned = re.sub(thinking_pattern, "", cleaned, count=1, flags=re.DOTALL | re.MULTILINE).strip()
 
     if len(cleaned) < min_length:
         raise ValueError(f"LLM output too short ({len(cleaned)} < {min_length}): {cleaned[:100]}")

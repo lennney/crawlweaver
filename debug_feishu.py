@@ -7,6 +7,7 @@
     python debug_feishu.py info            # 查 bot 信息
     python debug_feishu.py send "hello"    # 发消息到群/用户
 """
+
 import asyncio
 import json
 import os
@@ -31,7 +32,7 @@ async def get_token() -> str:
         d = r.json()
         if d.get("code") != 0:
             raise RuntimeError(f"token 获取失败: {d}")
-        print(f"[OK] tenant_access_token 获取成功")
+        print("[OK] tenant_access_token 获取成功")
         return d["tenant_access_token"]
 
 
@@ -53,29 +54,33 @@ async def test_webhook():
     """直接调 webhook — 验证路由+SDK 是否正常"""
     async with httpx.AsyncClient() as cli:
         # 1. url_verification
-        r = await cli.post(WEBHOOK_URL, json={
-            "type": "url_verification", "challenge": "debug123"
-        }, timeout=10)
+        r = await cli.post(
+            WEBHOOK_URL, json={"type": "url_verification", "challenge": "debug123"}, timeout=10
+        )
         print(f"[WEBHOOK url_verification] HTTP {r.status_code}")
         print(f"  Body: {r.text[:200]}")
 
         # 2. 模拟真实消息事件（含正确 token）
-        r2 = await cli.post(WEBHOOK_URL, json={
-            "schema": "2.0",
-            "header": {
-                "event_id": "test_001",
-                "event_type": "im.message.receive_v1",
-                "token": "RNT7lUxT7YEefKmhTwQ7cdEJW0CmhUfm",
+        r2 = await cli.post(
+            WEBHOOK_URL,
+            json={
+                "schema": "2.0",
+                "header": {
+                    "event_id": "test_001",
+                    "event_type": "im.message.receive_v1",
+                    "token": "RNT7lUxT7YEefKmhTwQ7cdEJW0CmhUfm",
+                },
+                "event": {
+                    "message": {
+                        "chat_id": "oc_test123",
+                        "message_id": "om_test123",
+                        "message_type": "text",
+                        "content": json.dumps({"text": "https://httpbin.org/"}),
+                    }
+                },
             },
-            "event": {
-                "message": {
-                    "chat_id": "oc_test123",
-                    "message_id": "om_test123",
-                    "message_type": "text",
-                    "content": json.dumps({"text": "https://httpbin.org/"}),
-                }
-            },
-        }, timeout=10)
+            timeout=10,
+        )
         print(f"[WEBHOOK fake message] HTTP {r2.status_code}")
         print(f"  Body: {r2.text[:300]}")
 
@@ -88,7 +93,7 @@ async def check_health():
         print(f"[CRAWLWEAVER local] HTTP {r.status_code} — {r.text}")
 
         # 公网隧道
-        r2 = await cli.get(f"https://crawl.take-a-deep-breath0.com/api/health", timeout=10)
+        r2 = await cli.get("https://crawl.take-a-deep-breath0.com/api/health", timeout=10)
         print(f"[TUNNEL public] HTTP {r2.status_code} — {r2.text}")
 
 

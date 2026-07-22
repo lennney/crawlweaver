@@ -1,6 +1,7 @@
 """Tests for batch CSV import."""
-import tempfile
+
 import os
+import tempfile
 
 
 def test_parse_csv():
@@ -8,7 +9,7 @@ def test_parse_csv():
     from cli import parse_batch_csv
 
     csv_content = "url,keyword,source\nhttps://a.com,test a,web\nhttps://b.com,test b,youtube\n"
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
         f.write(csv_content)
         f.flush()
         rows = parse_batch_csv(f.name)
@@ -26,7 +27,7 @@ def test_parse_csv_defaults():
     from cli import parse_batch_csv
 
     csv_content = "url,keyword\nhttps://a.com,test\n"
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
         f.write(csv_content)
         f.flush()
         rows = parse_batch_csv(f.name)
@@ -41,7 +42,7 @@ def test_parse_csv_empty():
     from cli import parse_batch_csv
 
     csv_content = "url,keyword\n"
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
         f.write(csv_content)
         f.flush()
         rows = parse_batch_csv(f.name)

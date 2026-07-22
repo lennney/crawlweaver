@@ -3,13 +3,13 @@
 5-dimension scoring. Failures become compact error messages
 that get injected back into rewrite context for self-healing.
 """
+
 import logging
 from datetime import datetime
-from pathlib import Path
 
-from state import CrawlState, Step, VerifyResult
-from llm import LLM
 from context import build_verify_context
+from llm import LLM
+from state import CrawlState, Step, VerifyResult
 from tools.parse import parse_json
 
 logger = logging.getLogger("crawler.verify")
@@ -21,9 +21,12 @@ VERIFY_PROMPT = """Score this article (0-20 each, total 0-100):
 4. Readability: paragraphs reasonable? language natural?
 5. Compliance: no risky content? source attribution?
 
-Output JSON only. IMPORTANT: "issues" and "fix_suggestions" must be arrays of plain strings, NOT objects.
+Output JSON only. IMPORTANT: "issues" and "fix_suggestions"
+must be arrays of plain strings, NOT objects.
 
-{"score":85,"dimensions":{"accuracy":{"score":18},"completeness":{"score":16},"seo":{"score":17},"readability":{"score":17},"compliance":{"score":17}},"issues":["issue description"],"fix_suggestions":["suggestion"]}"""
+{"score":85,"dimensions":{"accuracy":{"score":18},"completeness":{"score":16},
+"seo":{"score":17},"readability":{"score":17},"compliance":{"score":17}},
+"issues":["issue description"],"fix_suggestions":["suggestion"]}"""
 
 
 def verify(state: CrawlState, llm: LLM, min_score: int = 70) -> CrawlState:
@@ -53,16 +56,19 @@ def verify(state: CrawlState, llm: LLM, min_score: int = 70) -> CrawlState:
 
         if verify_result.passed:
             state.step = Step.PASSED
-            state.append_event("verify", True,
-                               f"PASSED score={verify_result.score}",
-                               score=verify_result.score)
+            state.append_event(
+                "verify", True, f"PASSED score={verify_result.score}", score=verify_result.score
+            )
         else:
             state.step = Step.VERIFIED
-            state.append_event("verify", False,
-                               f"FAILED score={verify_result.score}",
-                               score=verify_result.score,
-                               issues=verify_result.issues,
-                               fix_suggestions=verify_result.fix_suggestions)
+            state.append_event(
+                "verify",
+                False,
+                f"FAILED score={verify_result.score}",
+                score=verify_result.score,
+                issues=verify_result.issues,
+                fix_suggestions=verify_result.fix_suggestions,
+            )
 
         logger.info(f"Verify: score={verify_result.score} passed={verify_result.passed}")
 

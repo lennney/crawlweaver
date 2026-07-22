@@ -3,18 +3,20 @@
 Factor #8: Own your control flow. No Celery, no Redis.
 Just threading.Semaphore + a dict of jobs.
 """
+
 import logging
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Optional
+from enum import StrEnum
+from typing import Any
 
 logger = logging.getLogger("crawler.queue")
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -30,8 +32,8 @@ class Job:
     content_type: str = "Beginner Guide"
     status: JobStatus = JobStatus.PENDING
     created_at: float = field(default_factory=time.time)
-    started_at: Optional[float] = None
-    finished_at: Optional[float] = None
+    started_at: float | None = None
+    finished_at: float | None = None
     result: Any = None
     error: str = ""
 
@@ -50,19 +52,23 @@ class TaskQueue:
         self._semaphore = threading.Semaphore(max_workers)
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
-        self._handler: Optional[Callable[[Job], None]] = None
+        self._handler: Callable[[Job], None] | None = None
 
     def set_handler(self, handler: Callable[[Job], None]):
         """Set the function that processes each job."""
         self._handler = handler
 
-    def submit(self, url: str, keyword: str, source: str = "youtube",
-               content_type: str = "Beginner Guide") -> str:
+    def submit(
+        self, url: str, keyword: str, source: str = "youtube", content_type: str = "Beginner Guide"
+    ) -> str:
         """Submit a job. Returns job ID."""
         job_id = uuid.uuid4().hex[:12]
         job = Job(
-            id=job_id, url=url, keyword=keyword,
-            source=source, content_type=content_type,
+            id=job_id,
+            url=url,
+            keyword=keyword,
+            source=source,
+            content_type=content_type,
         )
         with self._lock:
             self._jobs[job_id] = job
@@ -73,7 +79,7 @@ class TaskQueue:
         logger.info(f"Job submitted: {job_id} ({keyword})")
         return job_id
 
-    def get_job(self, job_id: str) -> Optional[Job]:
+    def get_job(self, job_id: str) -> Job | None:
         with self._lock:
             return self._jobs.get(job_id)
 

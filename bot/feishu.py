@@ -15,15 +15,13 @@ import json
 import logging
 import os
 import time
-from typing import Optional
-from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse, Response
+from fastapi import APIRouter, Request
+from fastapi.responses import Response
 
-from .url_parser import parse_url, URLInfo
-from .cards import confirm_card, progress_card, result_card, error_card, timeout_card
+from .cards import error_card, progress_card, result_card, timeout_card
+from .url_parser import parse_url
 
 logger = logging.getLogger("crawler.bot")
 # 确保日志能输出到 systemd journal（uvicorn 默认只显示访问日志）
@@ -36,13 +34,14 @@ CRAWLWEAVER_API = os.getenv("CRAWLWEAVER_API", "http://localhost:8090")
 
 # --- 飞书客户端（最小化，只用到卡片发送） ---
 
+
 class FeishuClient:
     """极简飞书客户端 — 只做 token 获取 + 回复卡片."""
 
     def __init__(self):
         self.app_id = os.getenv("FEISHU_APP_ID", "")
         self.app_secret = os.getenv("FEISHU_APP_SECRET", "")
-        self._token: Optional[str] = None
+        self._token: str | None = None
         self._token_expires_at: float = 0
 
     async def _get_token(self) -> str:
@@ -72,8 +71,7 @@ class FeishuClient:
         token = await self._get_token()
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                "https://open.feishu.cn/open-apis/im/v1/messages/"
-                f"{message_id}/reply",
+                f"https://open.feishu.cn/open-apis/im/v1/messages/{message_id}/reply",
                 headers={"Authorization": f"Bearer {token}"},
                 json={
                     "content": json.dumps(card),
@@ -125,7 +123,7 @@ class FeishuClient:
                 logger.error(f"飞书卡片更新失败: {data}")
 
 
-_feishu: Optional[FeishuClient] = None
+_feishu: FeishuClient | None = None
 
 
 def get_feishu() -> FeishuClient:
@@ -137,14 +135,17 @@ def get_feishu() -> FeishuClient:
 
 # --- URL 提取 ---
 
+
 def extract_urls(text: str) -> list[str]:
     """从文本中提取所有 URL."""
     import re
+
     urls = re.findall(r"https?://[^\s<>\"']+", text)
     return [u.rstrip(".,;:!?") for u in urls]
 
 
 # --- 核心：触发爬取流程 ---
+
 
 async def trigger_crawl(
     url: str,
@@ -153,8 +154,6 @@ async def trigger_crawl(
     reply_to: str = "",
 ) -> dict:
     """完整爬取流程：解析 URL → 提交任务 → 进度卡片 → 结果卡片。"""
-    from .url_parser import parse_url
-    from .cards import progress_card, result_card, error_card, timeout_card
 
     feishu = get_feishu()
     target = reply_to or message_id
@@ -221,7 +220,11 @@ async def trigger_crawl(
         status = job.get("status", "pending")
         result = job.get("result", {})
         step = result.get("step", "extract") if result else "extract"
-        pct = int((steps_order.index(step) + 1) / len(steps_order) * 100) if step in steps_order else 50
+        pct = (
+            int((steps_order.index(step) + 1) / len(steps_order) * 100)
+            if step in steps_order
+            else 50
+        )
 
         if status == "completed":
             score = result.get("score", 0) if result else 0
@@ -268,6 +271,7 @@ async def trigger_crawl(
 
 
 # --- 便捷函数（供 Hermes agent 直接调用） ---
+
 
 async def handle_message(text: str, chat_id: str = "", message_id: str = "") -> list[dict]:
     """处理飞书消息 — 提取 URL → 触发爬取 → 返回卡片。
@@ -343,6 +347,7 @@ def _get_event_handler():
 
 # --- Webhook 路由 ---
 
+
 @router.post("/webhook")
 async def feishu_webhook(request: Request):
     """飞书事件回调 webhook — 使用 lark-oapi SDK 自动处理。"""
@@ -351,7 +356,11 @@ async def feishu_webhook(request: Request):
 
     body = await request.body()
     data = json.loads(body)
-    logger.info(f"Webhook event: type={data.get('type','?')} schema={data.get('schema','?')} header_ev={data.get('header',{}).get('event_type','')}")
+    logger.info(
+        f"Webhook event: type={data.get('type', '?')} "
+        f"schema={data.get('schema', '?')} "
+        f"header_ev={data.get('header', {}).get('event_type', '')}"
+    )
 
     raw_req = RawRequest()
     raw_req.body = body

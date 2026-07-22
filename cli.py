@@ -8,7 +8,6 @@ Usage:
 
 import argparse
 import csv
-import json
 import logging
 import sys
 from pathlib import Path
@@ -16,10 +15,10 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from state import make_state
 from knowledge import load_knowledge, save_knowledge
 from llm import LLM
 from reducer import crawl
+from state import make_state
 
 
 def main():
@@ -33,7 +32,11 @@ def main():
     p_setup = sub.add_parser("setup", help="First-run setup (YouTube cookies)")
     p_setup.add_argument("--check", action="store_true", help="Check if cookies are valid")
     p_crawl.add_argument("url", help="URL to crawl")
-    p_crawl.add_argument("--source", default="youtube", choices=["youtube", "web", "reddit", "twitter", "wechat", "zhihu"])
+    p_crawl.add_argument(
+        "--source",
+        default="youtube",
+        choices=["youtube", "web", "reddit", "twitter", "wechat", "zhihu"],
+    )
     p_crawl.add_argument("--keyword", default="", help="Target keyword")
     p_crawl.add_argument("--content-type", default="Beginner Guide")
     p_crawl.add_argument("--target-words", type=int, default=1200)
@@ -84,16 +87,19 @@ def main():
         cmd_crawl(args)
     elif args.command == "setup":
         from setup import cmd_setup
+
         cmd_setup(args)
     elif args.command == "knowledge":
         cmd_knowledge(args)
     elif args.command == "dashboard":
         import uvicorn
+
         uvicorn.run("web.app:app", host=args.host, port=args.port)
     elif args.command == "batch":
         cmd_batch(args)
     elif args.command == "publish":
         from publisher import generate_site
+
         site_dir = Path(args.site_dir)
         generate_site(Path(args.output), site_dir, args.title)
         article_count = len(list(site_dir.glob("*.html"))) - 1  # exclude index
@@ -107,7 +113,8 @@ def main():
 
 def cmd_crawl(args):
     """Execute a crawl."""
-    from setup import check_cookies, COOKIES_PATH
+    from setup import COOKIES_PATH
+
     if args.source == "youtube" and not _has_cookies():
         print("⚠️  YouTube 爬取需要 cookies（云服务器 IP 被 YouTube 封锁）")
         print()
@@ -131,6 +138,7 @@ def cmd_crawl(args):
     # Load or create state
     if args.load_state:
         from state import CrawlState
+
         state = CrawlState.load(args.load_state)
         print(f"Resumed from: {args.load_state}")
     else:
@@ -146,6 +154,7 @@ def cmd_crawl(args):
     state_dir = Path(args.knowledge).parent / "states"
     state_dir.mkdir(parents=True, exist_ok=True)
     import hashlib as _hashlib
+
     state_hash = _hashlib.md5(state.url.encode()).hexdigest()[:6]
     auto_state_path = str(state_dir / f"{state_hash}.json")
 
@@ -174,7 +183,7 @@ def cmd_crawl(args):
     if state.error:
         print(f"Error: {state.error}")
     if state.failure_report:
-        print(f"\nFAILED - needs human review:")
+        print("\nFAILED - needs human review:")
         print(f"  URL: {state.failure_report['url']}")
         print(f"  Error: {state.failure_report['error']}")
         print(f"  Attempts: {state.failure_report['attempts']}")
@@ -189,6 +198,7 @@ def cmd_crawl(args):
 def _has_cookies() -> bool:
     """Check if any valid cookies file exists."""
     from setup import COOKIES_PATH
+
     candidates = [
         COOKIES_PATH,
         Path.home() / "yt_cookies.txt",
@@ -215,18 +225,21 @@ def parse_batch_csv(path: str) -> list[dict]:
     Optional: source (default youtube), content_type (default Beginner Guide).
     """
     rows = []
-    with open(path, newline='', encoding='utf-8') as f:
+    with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             url = row.get("url", "").strip()
             if not url:
                 continue
-            rows.append({
-                "url": url,
-                "keyword": row.get("keyword", "").strip(),
-                "source": row.get("source", "youtube").strip() or "youtube",
-                "content_type": row.get("content_type", "Beginner Guide").strip() or "Beginner Guide",
-            })
+            rows.append(
+                {
+                    "url": url,
+                    "keyword": row.get("keyword", "").strip(),
+                    "source": row.get("source", "youtube").strip() or "youtube",
+                    "content_type": row.get("content_type", "Beginner Guide").strip()
+                    or "Beginner Guide",
+                }
+            )
     return rows
 
 
@@ -244,10 +257,10 @@ def cmd_batch(args):
     from task_queue import TaskQueue
 
     def crawl_handler(job):
-        from state import make_state
         from knowledge import load_knowledge, save_knowledge
         from llm import LLM
         from reducer import crawl as run_crawl
+        from state import make_state
 
         state = make_state(url=job.url, source=job.source, keyword=job.keyword)
         knowledge = load_knowledge(args.knowledge)
@@ -263,6 +276,7 @@ def cmd_batch(args):
 
     # Wait for all to finish
     import time
+
     while True:
         stats = tq.stats()
         if stats["pending"] == 0 and stats["running"] == 0:
@@ -271,7 +285,10 @@ def cmd_batch(args):
 
     # Summary
     stats = tq.stats()
-    print(f"\nBatch complete: {stats['completed']} passed, {stats['failed']} failed out of {len(rows)}")
+    print(
+        f"\nBatch complete: {stats['completed']} passed, "
+        f"{stats['failed']} failed out of {len(rows)}"
+    )
 
 
 def cmd_cron(args):
@@ -322,6 +339,7 @@ def cmd_cron(args):
         state_dir = Path(args.knowledge).parent / "states"
         state_dir.mkdir(parents=True, exist_ok=True)
         import hashlib as _hashlib
+
         state_hash = _hashlib.md5(state.url.encode()).hexdigest()[:6]
         auto_state_path = str(state_dir / f"{state_hash}.json")
 

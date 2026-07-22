@@ -58,7 +58,9 @@ def render(state: CrawlState) -> CrawlState:
 
         # Write output
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        slug = state.seo.url_slug.strip("/").replace("/", "_") or _slugify(state.keyword or state.title)
+        slug = state.seo.url_slug.strip("/").replace("/", "_") or _slugify(
+            state.keyword or state.title
+        )
         out_path = OUTPUT_DIR / f"{slug}.html"
         out_path.write_text(html, encoding="utf-8")
 
@@ -79,6 +81,7 @@ def _markdown_to_sections(md: str) -> str:
     """Convert markdown to HTML sections (H2 blocks)."""
     try:
         import markdown
+
         return markdown.markdown(md, extensions=["fenced_code", "tables"])
     except ImportError:
         # Fallback: basic conversion
@@ -92,10 +95,13 @@ def _markdown_to_sections(md: str) -> str:
 
 def _extract_faq(md: str) -> str:
     """Extract FAQ section from markdown."""
-    faq_match = re.search(r"(## (?:FAQ|Frequently Asked).+?)(?=\n## (?!FAQ)|$)", md, re.DOTALL | re.IGNORECASE)
+    faq_match = re.search(
+        r"(## (?:FAQ|Frequently Asked).+?)(?=\n## (?!FAQ)|$)", md, re.DOTALL | re.IGNORECASE
+    )
     if faq_match:
         try:
             import markdown
+
             return markdown.markdown(faq_match.group(1), extensions=["fenced_code"])
         except ImportError:
             return faq_match.group(1)
@@ -114,6 +120,7 @@ def _slugify(text: str) -> str:
 def _basic_template():
     """Fallback template when no Jinja2 template file exists."""
     from jinja2 import Template
+
     return Template("""<!DOCTYPE html>
 <html lang="en">
 <head>

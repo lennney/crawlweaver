@@ -10,10 +10,10 @@ import logging
 import re
 from pathlib import Path
 
-from state import CrawlState, Step
-from llm import LLM
 from context import build_rewrite_context
 from knowledge import Knowledge
+from llm import LLM
+from state import CrawlState, Step
 from tools.parse import parse_llm_output
 
 logger = logging.getLogger("crawler.rewrite")
@@ -39,17 +39,22 @@ def rewrite(state: CrawlState, llm: LLM, knowledge: Knowledge) -> CrawlState:
         # Factor #3: Context engineering — code decides what LLM sees
         user_prompt = build_rewrite_context(state, knowledge)
 
-        logger.info(f"Rewriting '{state.keyword}' ({len(state.raw_text)} chars raw, attempt={state.attempts})")
+        logger.info(
+            f"Rewriting '{state.keyword}' "
+            f"({len(state.raw_text)} chars raw, attempt={state.attempts})"
+        )
         # Bug fix: include attempt in cache key so fix loops don't return stale cached rewrites
         cache_suffix = f"_fix{state.attempts}" if state.attempts > 0 else ""
-        result = parse_llm_output(llm.call(
-            system=system_prompt,
-            user=user_prompt,
-            max_tokens=8192,
-            temperature=0.7,
-            cache_step=f"rewrite{cache_suffix}",
-            cache_input=state.raw_text[:500],
-        ))
+        result = parse_llm_output(
+            llm.call(
+                system=system_prompt,
+                user=user_prompt,
+                max_tokens=8192,
+                temperature=0.7,
+                cache_step=f"rewrite{cache_suffix}",
+                cache_input=state.raw_text[:500],
+            )
+        )
 
         # Parse result — extract title and body
         state.article_md = result

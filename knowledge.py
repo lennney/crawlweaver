@@ -10,7 +10,6 @@ import logging
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -155,22 +154,34 @@ class Knowledge(BaseModel):
         """Add a target keyword (not yet covered)."""
         if keyword not in self.keyword_coverage:
             self.keyword_coverage[keyword] = KeywordCoverage(
-                keyword=keyword, covered=False,
+                keyword=keyword,
+                covered=False,
             )
 
     def coverage_summary(self) -> dict:
         covered = sum(1 for c in self.keyword_coverage.values() if c.covered)
         targeted = sum(1 for c in self.keyword_coverage.values() if not c.covered)
-        return {"covered": covered, "targeted": targeted, "total_keywords": len(self.keyword_coverage)}
+        return {
+            "covered": covered,
+            "targeted": targeted,
+            "total_keywords": len(self.keyword_coverage),
+        }
 
     def record_article_cost(self, url: str, keyword: str, cost_records: list):
         """Record total cost for an article."""
         total = sum(c.cost_usd for c in cost_records)
-        steps = [{"step": c.step, "tokens": c.total_tokens, "cost": c.cost_usd} for c in cost_records]
-        self.article_costs.append(ArticleCost(
-            url=url, keyword=keyword, total_cost_usd=total,
-            steps=steps, timestamp=datetime.now().isoformat(),
-        ))
+        steps = [
+            {"step": c.step, "tokens": c.total_tokens, "cost": c.cost_usd} for c in cost_records
+        ]
+        self.article_costs.append(
+            ArticleCost(
+                url=url,
+                keyword=keyword,
+                total_cost_usd=total,
+                steps=steps,
+                timestamp=datetime.now().isoformat(),
+            )
+        )
 
     def total_cost(self) -> float:
         return sum(a.total_cost_usd for a in self.article_costs)
@@ -201,6 +212,7 @@ def load_knowledge(path: str | Path) -> Knowledge:
 def save_knowledge(knowledge: Knowledge, path: str | Path):
     """Save knowledge to disk. Thread-safe via module lock. Atomic write."""
     import os
+
     with _knowledge_lock:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -216,7 +228,7 @@ def save_knowledge(knowledge: Knowledge, path: str | Path):
 
 def load_and_save_knowledge(path: str | Path, fn):
     """Thread-safe load → modify → save cycle. Atomic write.
-    
+
     Usage:
         def modify(knowledge):
             knowledge.record_crawl(url)
@@ -224,6 +236,7 @@ def load_and_save_knowledge(path: str | Path, fn):
         result = load_and_save_knowledge("knowledge.json", modify)
     """
     import os
+
     with _knowledge_lock:
         p = Path(path)
         knowledge = load_knowledge(p)

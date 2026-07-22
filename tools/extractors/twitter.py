@@ -16,8 +16,8 @@ logger = logging.getLogger("crawler.extract.twitter")
 
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-                  "AppleWebKit/605.1.15 (KHTML, like Gecko) "
-                  "Version/17.0 Mobile/15E148 Safari/604.1",
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+    "Version/17.0 Mobile/15E148 Safari/604.1",
 }
 
 
@@ -39,7 +39,8 @@ def extract_twitter(state: CrawlState) -> None:
     try:
         resp = requests.get(
             f"https://publish.twitter.com/oembed?url={url}&omit_script=true",
-            headers=_HEADERS, timeout=15,
+            headers=_HEADERS,
+            timeout=15,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -66,7 +67,11 @@ def extract_twitter(state: CrawlState) -> None:
         if og_desc and og_desc.get("content"):
             state.raw_text = str(og_desc["content"])
             og_title = soup.find("meta", property="og:title")
-            state.title = str(og_title["content"]) if og_title and og_title.get("content") else f"Tweet {tweet_id}"
+            state.title = (
+                str(og_title["content"])
+                if og_title and og_title.get("content")
+                else f"Tweet {tweet_id}"
+            )
             state.source_metadata = {"method": "scraping", "tweet_id": tweet_id}
             return
 

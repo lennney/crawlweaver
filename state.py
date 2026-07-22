@@ -6,12 +6,11 @@ Events list IS the short-term history. State fields ARE the working memory.
 
 from __future__ import annotations
 
-import json
 import threading
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +20,8 @@ MAX_EVENTS = 20
 
 # --- Enums ---
 
-class Source(str, Enum):
+
+class Source(StrEnum):
     YOUTUBE = "youtube"
     WEB = "web"
     REDDIT = "reddit"
@@ -30,7 +30,7 @@ class Source(str, Enum):
     ZHIHU = "zhihu"
 
 
-class Step(str, Enum):
+class Step(StrEnum):
     PENDING = "pending"
     EXTRACTED = "extracted"
     REWRITTEN = "rewritten"
@@ -43,6 +43,7 @@ class Step(str, Enum):
 
 
 # --- Sub-models ---
+
 
 class SeoMetadata(BaseModel):
     title_tag: str = ""
@@ -61,6 +62,7 @@ class VerifyResult(BaseModel):
 
 class CrawlEvent(BaseModel):
     """Immutable event — appended after each tool execution."""
+
     step: str
     tool: str
     success: bool
@@ -71,9 +73,10 @@ class CrawlEvent(BaseModel):
 
 # --- Main State ---
 
+
 class CrawlState(BaseModel):
     """The single source of truth for one crawl job.
-    
+
     Execution state (step, events, attempts) and business state
     (raw_text, article_md, seo) live together — Factor #5.
     """
@@ -103,10 +106,10 @@ class CrawlState(BaseModel):
     html_path: str = ""
 
     # Verify (populated by verify tool)
-    verify: Optional[VerifyResult] = None
+    verify: VerifyResult | None = None
 
     # Failure report (Factor #7: set on failure)
-    failure_report: Optional[dict] = None
+    failure_report: dict | None = None
 
     # Sprint 4: Knowledge-guided extraction strategy
     preferred_extractor: str = ""  # Set by reducer from site_patterns
@@ -152,18 +155,19 @@ class CrawlState(BaseModel):
         return self.model_dump_json(indent=2)
 
     @classmethod
-    def from_json(cls, text: str) -> "CrawlState":
+    def from_json(cls, text: str) -> CrawlState:
         return cls.model_validate_json(text)
 
     def save(self, path: str | Path):
         Path(path).write_text(self.to_json(), encoding="utf-8")
 
     @classmethod
-    def load(cls, path: str | Path) -> "CrawlState":
+    def load(cls, path: str | Path) -> CrawlState:
         return cls.from_json(Path(path).read_text(encoding="utf-8"))
 
 
 # --- Factory ---
+
 
 def make_state(url: str, source: str = "youtube", keyword: str = "", **kw) -> CrawlState:
     """Create a new CrawlState from minimal inputs."""

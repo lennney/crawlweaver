@@ -1,4 +1,5 @@
 """Tests for LLM cost tracking."""
+
 from llm import CostRecord
 
 
@@ -49,5 +50,6 @@ def test_cost_record_missing_usage():
 def test_llm_last_cost_init():
     """LLM should initialize with last_cost=None."""
     from llm import LLM
+
     llm = LLM()
     assert llm.last_cost is None

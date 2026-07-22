@@ -1,16 +1,18 @@
 """API routes for the dashboard."""
+
 import csv
 import json
 import logging
+from collections.abc import Callable
 from html import escape
 from io import StringIO
 from pathlib import Path
-from typing import Callable
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from task_queue import Job, JobStatus, TaskQueue
-from knowledge import load_knowledge, Knowledge
+from knowledge import Knowledge, load_knowledge
+from task_queue import Job, TaskQueue
 
 logger = logging.getLogger("crawler.web")
 
@@ -34,6 +36,7 @@ def _get_knowledge() -> Knowledge:
     _know_cache = (current_mtime, k)
     return k
 
+
 # Will be set by app.py at import time
 _task_queue: "TaskQueue | None" = None
 
@@ -42,6 +45,7 @@ def get_queue() -> "TaskQueue":
     global _task_queue
     if _task_queue is None:
         from web.app import task_queue as tq
+
         _task_queue = tq
     return _task_queue
 
@@ -110,10 +114,10 @@ async def list_jobs():
         "failed": "text-red-400",
     }
     html = f"""<div class="flex gap-4 mb-4 text-sm">
-        <span class="text-gray-400">⏳ {stats.get('pending', 0)} pending</span>
-        <span class="text-blue-400">🔄 {stats.get('running', 0)} running</span>
-        <span class="text-green-400">✅ {stats.get('completed', 0)} done</span>
-        <span class="text-red-400">❌ {stats.get('failed', 0)} failed</span>
+        <span class="text-gray-400">⏳ {stats.get("pending", 0)} pending</span>
+        <span class="text-blue-400">🔄 {stats.get("running", 0)} running</span>
+        <span class="text-green-400">✅ {stats.get("completed", 0)} done</span>
+        <span class="text-red-400">❌ {stats.get("failed", 0)} failed</span>
     </div>"""
     html += """<table class="w-full text-sm">
         <thead><tr class="text-left text-gray-500 border-b border-gray-700">
@@ -155,41 +159,47 @@ async def create_job(request: Request):
 @router.get("/jobs/{job_id}")
 async def get_job(job_id: str):
     """Get job status by ID (for progress polling)."""
-    import json, fcntl
+    import fcntl
+    import json
+
     tq = get_queue()
     job = tq.get_job(job_id)
     if not job:
         # Check state file for completed jobs
         state_path = DATA_DIR / "states" / f"{job_id}.json"
         if state_path.exists():
-            with open(state_path, "r") as f:
+            with open(state_path) as f:
                 fcntl.flock(f, fcntl.LOCK_SH)
                 try:
                     data = json.loads(f.read())
                 finally:
                     fcntl.flock(f, fcntl.LOCK_UN)
-            return JSONResponse({
-                "status": "completed",
-                "job_id": job_id,
-                "result": {
-                    "step": data.get("step", ""),
-                    "score": data.get("verify", {}).get("score", 0),
-                    "title": data.get("title", ""),
-                    "word_count": data.get("word_count", 0),
-                    "html_path": data.get("html_path", ""),
-                },
-            })
+            return JSONResponse(
+                {
+                    "status": "completed",
+                    "job_id": job_id,
+                    "result": {
+                        "step": data.get("step", ""),
+                        "score": data.get("verify", {}).get("score", 0),
+                        "title": data.get("title", ""),
+                        "word_count": data.get("word_count", 0),
+                        "html_path": data.get("html_path", ""),
+                    },
+                }
+            )
         return JSONResponse({"error": "not found"}, status_code=404)
 
-    return JSONResponse({
-        "status": job.status.value,
-        "job_id": job.id,
-        "error": job.error,
-        "result": {
-            "url": job.url,
-            "keyword": job.keyword,
-        },
-    })
+    return JSONResponse(
+        {
+            "status": job.status.value,
+            "job_id": job.id,
+            "error": job.error,
+            "result": {
+                "url": job.url,
+                "keyword": job.keyword,
+            },
+        }
+    )
 
 
 @router.get("/knowledge")
@@ -254,7 +264,7 @@ async def list_articles():
 
     items = ""
     for a in articles:
-        name = escape(a['name'])
+        name = escape(a["name"])
         items += f"""<a href="/api/articles/{name}" target="_blank"
             class="block bg-gray-800 hover:bg-gray-700 rounded px-4 py-3 mb-2 transition-colors">
             <span class="text-blue-400">📄</span>
@@ -275,6 +285,7 @@ async def get_article(name: str):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     if path.exists():
         from fastapi.responses import FileResponse
+
         return FileResponse(path, media_type="text/html")
     return JSONResponse({"error": "not found"}, status_code=404)
 
@@ -331,22 +342,32 @@ async def get_costs():
         </div>
     </div>"""
 
-    html += '<table class="w-full text-sm"><thead><tr class="text-left text-gray-500 border-b border-gray-700">'
-    html += '<th class="pb-2 pr-4">Keyword</th><th class="pb-2 pr-4">Tokens</th><th class="pb-2 pr-4">Cost</th><th class="pb-2">Steps</th></tr></thead><tbody>'
+    html += (
+        '<table class="w-full text-sm">'
+        "<thead>"
+        '<tr class="text-left text-gray-500 border-b border-gray-700">'
+    )
+    html += (
+        '<th class="pb-2 pr-4">Keyword</th>'
+        '<th class="pb-2 pr-4">Tokens</th>'
+        '<th class="pb-2 pr-4">Cost</th>'
+        '<th class="pb-2">Steps</th>'
+        "</tr></thead><tbody>"
+    )
 
     for a in reversed(article_costs):
         keyword = escape(a.get("keyword", "") or a.get("url", "")[:40])
         total_tokens = sum(s.get("tokens", 0) for s in a.get("steps", []))
         cost = a.get("total_cost_usd", 0)
         steps = ", ".join(s.get("step", "") for s in a.get("steps", []))
-        html += f'<tr class="border-b border-gray-800">'
+        html += '<tr class="border-b border-gray-800">'
         html += f'<td class="py-2 pr-4 text-gray-300">{keyword}</td>'
         html += f'<td class="py-2 pr-4 text-gray-400">{total_tokens:,}</td>'
         html += f'<td class="py-2 pr-4 text-green-400">${cost:.4f}</td>'
         html += f'<td class="py-2 text-gray-500 text-xs">{escape(steps)}</td>'
-        html += '</tr>'
+        html += "</tr>"
 
-    html += '</tbody></table>'
+    html += "</tbody></table>"
     return HTMLResponse(html)
 
 
@@ -361,11 +382,13 @@ async def quality_trends():
                 data = json.loads(f.read_text())
                 verify = data.get("verify")
                 if verify and verify.get("score"):
-                    scores.append({
-                        "keyword": data.get("keyword", ""),
-                        "score": verify["score"],
-                        "step": data.get("step", ""),
-                    })
+                    scores.append(
+                        {
+                            "keyword": data.get("keyword", ""),
+                            "score": verify["score"],
+                            "step": data.get("step", ""),
+                        }
+                    )
             except Exception:
                 logger.debug("Skipping corrupted state file: %s", f.name)
                 continue
@@ -392,8 +415,11 @@ async def quality_trends():
         <line x1="0" y1="{height}" x2="{width}" y2="{height}" stroke="#374151" stroke-width="1"/>
         <line x1="0" y1="0" x2="0" y2="{height}" stroke="#374151" stroke-width="1"/>
         <polyline points="{polyline}" fill="none" stroke="#3b82f6" stroke-width="2"/>
-        <line x1="0" y1="{int(height - (avg/100)*(height-20))}" x2="{width}" y2="{int(height - (avg/100)*(height-20))}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4"/>
-        <text x="{width}" y="{height + 15}" text-anchor="end" fill="#9ca3af" font-size="10">avg: {avg:.0f}</text>
+        <line x1="0" y1="{int(height - (avg / 100) * (height - 20))}"
+              x2="{width}" y2="{int(height - (avg / 100) * (height - 20))}"
+              stroke="#f59e0b" stroke-width="1" stroke-dasharray="4"/>
+        <text x="{width}" y="{height + 15}" text-anchor="end"
+              fill="#9ca3af" font-size="10">avg: {avg:.0f}</text>
         <text x="0" y="{height + 15}" fill="#9ca3af" font-size="10">articles: {len(scores)}</text>
     </svg>"""
 
@@ -404,10 +430,13 @@ async def quality_trends():
 async def publish_site():
     """Generate static site from published articles."""
     from publisher import generate_site
+
     site_dir = DATA_DIR / "site"
     generate_site(DATA_DIR / "output", site_dir, title="AI Content Hub")
     count = len(list(site_dir.glob("*.html"))) - 1  # exclude index
-    return HTMLResponse(f'<span class="text-green-400">✅ Site generated: {count} articles + index + RSS</span>')
+    return HTMLResponse(
+        f'<span class="text-green-400">✅ Site generated: {count} articles + index + RSS</span>'
+    )
 
 
 @router.get("/coverage")
@@ -422,24 +451,45 @@ async def get_coverage():
     covered = [(k, v) for k, v in coverage.items() if v.get("covered")]
     uncovered = [(k, v) for k, v in coverage.items() if not v.get("covered")]
 
-    html = f'<div class="mb-4 text-sm text-gray-400">'
-    html += f'✅ {len(covered)} covered | ⏳ {len(uncovered)} targeted</div>'
+    html = '<div class="mb-4 text-sm text-gray-400">'
+    html += f"✅ {len(covered)} covered | ⏳ {len(uncovered)} targeted</div>"
 
     if covered:
         html += '<h4 class="text-md font-medium text-green-400 mb-2">✅ Covered</h4>'
-        html += '<table class="w-full text-sm mb-4"><thead><tr class="text-left text-gray-500 border-b border-gray-700">'
-        html += '<th class="pb-2 pr-4">Keyword</th><th class="pb-2 pr-4">Score</th><th class="pb-2">URL</th></tr></thead><tbody>'
+        html += (
+            '<table class="w-full text-sm mb-4"><thead>'
+            '<tr class="text-left text-gray-500 border-b border-gray-700">'
+        )
+        html += (
+            '<th class="pb-2 pr-4">Keyword</th>'
+            '<th class="pb-2 pr-4">Score</th>'
+            '<th class="pb-2">URL</th>'
+            "</tr></thead><tbody>"
+        )
         for kw, info in sorted(covered, key=lambda x: x[1].get("score", 0), reverse=True):
-            html += f'<tr class="border-b border-gray-800"><td class="py-2 pr-4 text-gray-300">{escape(kw)}</td>'
+            html += (
+                f'<tr class="border-b border-gray-800">'
+                f'<td class="py-2 pr-4 text-gray-300">{escape(kw)}</td>'
+            )
             html += f'<td class="py-2 pr-4 text-green-400">{info.get("score", 0)}</td>'
-            html += f'<td class="py-2 text-gray-500 text-xs truncate max-w-xs">{escape(info.get("article_url", ""))}</td></tr>'
-        html += '</tbody></table>'
+            html += (
+                f'<td class="py-2 text-gray-500 text-xs truncate max-w-xs">'
+                f"{escape(info.get('article_url', ''))}</td></tr>"
+            )
+        html += "</tbody></table>"
 
     if uncovered:
-        html += '<h4 class="text-md font-medium text-yellow-400 mb-2">⏳ To Cover</h4><div class="flex flex-wrap gap-2">'
+        html += (
+            '<h4 class="text-md font-medium text-yellow-400 mb-2">'
+            "⏳ To Cover</h4>"
+            '<div class="flex flex-wrap gap-2">'
+        )
         for kw, _ in uncovered:
-            html += f'<span class="bg-gray-800 text-gray-300 px-3 py-1 rounded text-sm">{escape(kw)}</span>'
-        html += '</div>'
+            html += (
+                f'<span class="bg-gray-800 text-gray-300 px-3 py-1 rounded text-sm">'
+                f"{escape(kw)}</span>"
+            )
+        html += "</div>"
 
     return HTMLResponse(html)
 
@@ -454,13 +504,17 @@ async def review_queue():
             try:
                 data = json.loads(f.read_text())
                 if data.get("step") == "review":
-                    pending.append({
-                        "id": f.stem,
-                        "url": data.get("url", ""),
-                        "keyword": data.get("keyword", ""),
-                        "score": data.get("verify", {}).get("score", 0) if data.get("verify") else 0,
-                        "html_path": data.get("html_path", ""),
-                    })
+                    pending.append(
+                        {
+                            "id": f.stem,
+                            "url": data.get("url", ""),
+                            "keyword": data.get("keyword", ""),
+                            "score": data.get("verify", {}).get("score", 0)
+                            if data.get("verify")
+                            else 0,
+                            "html_path": data.get("html_path", ""),
+                        }
+                    )
             except Exception:
                 logger.debug("Skipping corrupted state file: %s", f.name)
                 continue
@@ -472,11 +526,22 @@ async def review_queue():
     for p in pending:
         keyword = escape(p["keyword"] or p["url"][:50])
         score = p["score"]
-        score_color = "text-green-400" if score >= 80 else "text-yellow-400" if score >= 60 else "text-red-400"
+        score_color = (
+            "text-green-400"
+            if score >= 80
+            else "text-yellow-400"
+            if score >= 60
+            else "text-red-400"
+        )
         preview = ""
         if p["html_path"]:
             name = Path(p["html_path"]).name
-            preview = f'<a href="/api/articles/{escape(name)}" target="_blank" class="text-blue-400 hover:underline text-sm">Preview</a>'
+            preview = (
+                f'<a href="/api/articles/{escape(name)}" '
+                f'target="_blank" '
+                f'class="text-blue-400 hover:underline text-sm">'
+                f"Preview</a>"
+            )
 
         html += f"""<div class="bg-gray-800 rounded-lg p-4 mb-3 flex items-center justify-between">
             <div>
@@ -485,11 +550,11 @@ async def review_queue():
                 {preview}
             </div>
             <div class="flex gap-2">
-                <button hx-post="/api/review/{escape(p['id'])}/approve" hx-swap="outerHTML"
+                <button hx-post="/api/review/{escape(p["id"])}/approve" hx-swap="outerHTML"
                     class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
                     ✅ Approve
                 </button>
-                <button hx-post="/api/review/{escape(p['id'])}/reject" hx-swap="outerHTML"
+                <button hx-post="/api/review/{escape(p["id"])}/reject" hx-swap="outerHTML"
                     class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
                     ❌ Reject
                 </button>
@@ -503,6 +568,7 @@ async def review_queue():
 async def approve_article(job_id: str):
     """Approve an article — change step from REVIEW to PASSED."""
     import fcntl
+
     state_path = DATA_DIR / "states" / f"{job_id}.json"
     if not state_path.exists():
         return JSONResponse({"error": "not found"}, status_code=404)
@@ -523,6 +589,7 @@ async def approve_article(job_id: str):
 async def reject_article(job_id: str):
     """Reject an article — change step from REVIEW to FAILED."""
     import fcntl
+
     state_path = DATA_DIR / "states" / f"{job_id}.json"
     if not state_path.exists():
         return JSONResponse({"error": "not found"}, status_code=404)
@@ -542,15 +609,18 @@ async def reject_article(job_id: str):
 
 def make_crawl_handler() -> Callable[[Job], None]:
     """Create a crawl handler for the task queue."""
+
     def handler(job: Job):
-        from state import make_state
         from knowledge import load_knowledge, save_knowledge
         from llm import LLM
         from reducer import crawl
+        from state import make_state
 
         state = make_state(
-            url=job.url, source=job.source,
-            keyword=job.keyword, content_type=job.content_type,
+            url=job.url,
+            source=job.source,
+            keyword=job.keyword,
+            content_type=job.content_type,
         )
         knowledge = load_knowledge(DATA_DIR / "knowledge.json")
         llm = LLM()
@@ -559,5 +629,9 @@ def make_crawl_handler() -> Callable[[Job], None]:
         state_path = states_dir / f"{job.id}.json"
         state = crawl(state, knowledge, llm, state_path=str(state_path))
         save_knowledge(knowledge, DATA_DIR / "knowledge.json")
-        job.result = {"step": state.step.value, "score": state.verify.score if state.verify else None}
+        job.result = {
+            "step": state.step.value,
+            "score": state.verify.score if state.verify else None,
+        }
+
     return handler

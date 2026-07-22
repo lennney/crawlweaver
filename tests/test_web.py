@@ -1,18 +1,19 @@
 """Smoke tests for the web dashboard (Task 8)."""
+
 import pytest
-from pathlib import Path
 
 
 def test_fastapi_app_loads():
     """FastAPI app should import and have correct routes."""
+
     from web.app import app
-    from fastapi.routing import APIRoute
+
     routes = []
     for r in app.routes:
-        if hasattr(r, 'path'):
+        if hasattr(r, "path"):
             routes.append(r.path)
-        elif hasattr(r, 'routes'):
-            routes.extend(s.path for s in r.routes if hasattr(s, 'path'))
+        elif hasattr(r, "routes"):
+            routes.extend(s.path for s in r.routes if hasattr(s, "path"))
     assert "/" in routes
     assert "/api/health" in routes
 
@@ -20,7 +21,8 @@ def test_fastapi_app_loads():
 @pytest.mark.asyncio
 async def test_health_endpoint():
     """Health endpoint should return OK."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from web.app import app
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -34,9 +36,10 @@ async def test_health_endpoint():
 @pytest.mark.asyncio
 async def test_jobs_endpoint(tmp_path, monkeypatch):
     """Jobs endpoint should return HTML table."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     # Patch DATA_DIR to use tmp_path
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
@@ -51,9 +54,10 @@ async def test_jobs_endpoint(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_knowledge_endpoint_empty(tmp_path, monkeypatch):
     """Knowledge endpoint should handle missing knowledge.json."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -67,9 +71,10 @@ async def test_knowledge_endpoint_empty(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_articles_endpoint_empty(tmp_path, monkeypatch):
     """Articles endpoint should handle missing output dir."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -83,7 +88,8 @@ async def test_articles_endpoint_empty(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_dashboard_renders():
     """Dashboard page should return HTML."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from web.app import app
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -96,20 +102,25 @@ async def test_dashboard_renders():
 @pytest.mark.asyncio
 async def test_create_job_endpoint():
     """POST /api/jobs should submit to queue."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from web.app import app
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post("/api/jobs", json={"url": "https://example.com", "keyword": "test"})
+        resp = await client.post(
+            "/api/jobs", json={"url": "https://example.com", "keyword": "test"}
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "submitted"
         assert "job_id" in data
 
+
 @pytest.mark.asyncio
 async def test_batch_import_no_file():
     """POST /api/batch without file should return 400."""
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from web.app import app
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -120,9 +131,10 @@ async def test_batch_import_no_file():
 @pytest.mark.asyncio
 async def test_coverage_endpoint_empty(tmp_path, monkeypatch):
     """Coverage endpoint should handle missing data."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -135,9 +147,10 @@ async def test_coverage_endpoint_empty(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_review_queue_empty(tmp_path, monkeypatch):
     """Review queue should handle empty states dir."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -152,9 +165,11 @@ async def test_review_queue_empty(tmp_path, monkeypatch):
 async def test_review_queue_with_pending(tmp_path, monkeypatch):
     """Review queue should show articles in review state."""
     import json
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
     states_dir = tmp_path / "states"
@@ -182,9 +197,11 @@ async def test_review_queue_with_pending(tmp_path, monkeypatch):
 async def test_approve_article(tmp_path, monkeypatch):
     """Approve endpoint should change step to passed."""
     import json
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
     states_dir = tmp_path / "states"
@@ -207,9 +224,11 @@ async def test_approve_article(tmp_path, monkeypatch):
 async def test_reject_article(tmp_path, monkeypatch):
     """Reject endpoint should change step to failed."""
     import json
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
     states_dir = tmp_path / "states"
@@ -232,9 +251,10 @@ async def test_reject_article(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_approve_article_not_found(tmp_path, monkeypatch):
     """Approve should return 404 for missing state."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -246,9 +266,10 @@ async def test_approve_article_not_found(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_costs_endpoint_empty(tmp_path, monkeypatch):
     """Costs endpoint should handle missing data."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -261,9 +282,10 @@ async def test_costs_endpoint_empty(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_trends_endpoint_empty(tmp_path, monkeypatch):
     """Trends endpoint should handle missing states dir."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 
@@ -278,9 +300,11 @@ async def test_trends_endpoint_empty(tmp_path, monkeypatch):
 async def test_trends_endpoint_with_scores(tmp_path, monkeypatch):
     """Trends endpoint should return SVG chart with scores."""
     import json
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
     states_dir = tmp_path / "states"
@@ -307,9 +331,10 @@ async def test_trends_endpoint_with_scores(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_publish_endpoint(tmp_path, monkeypatch):
     """Publish endpoint should generate static site."""
-    from httpx import AsyncClient, ASGITransport
-    from web.app import app
+    from httpx import ASGITransport, AsyncClient
+
     import web.api as api_module
+    from web.app import app
 
     monkeypatch.setattr(api_module, "DATA_DIR", tmp_path)
 

@@ -2,7 +2,6 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -45,6 +44,7 @@ def test_deploy_script_exists():
 def test_deploy_script_is_executable():
     """deploy.sh should be executable."""
     import stat
+
     deploy = Path(__file__).parent.parent / "scripts" / "deploy.sh"
     if deploy.exists():
         st = deploy.stat()
@@ -68,7 +68,9 @@ def test_cron_config_has_jobs():
 
 def test_cli_cron_dry_run():
     """CLI cron --dry-run should list jobs without executing."""
-    import tempfile, yaml
+    import tempfile
+
+    import yaml
 
     config = {
         "jobs": [
@@ -98,9 +100,11 @@ def test_cli_cron_dry_run():
 def test_cli_source_choices_include_new_sources():
     """CLI crawl --source should include twitter, wechat, zhihu."""
     import subprocess
+
     result = subprocess.run(
         [sys.executable, "cli.py", "crawl", "--help"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         cwd=str(Path(__file__).parent.parent),
     )
     help_text = result.stdout + result.stderr

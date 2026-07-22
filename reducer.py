@@ -7,19 +7,17 @@ The entire flow is readable in one function. That is the point.
 """
 
 from __future__ import annotations
+
 import logging
-from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
-from state import CrawlState, Step
 from knowledge import Knowledge
 from llm import LLM
-
+from state import CrawlState, Step
 from tools.extract import extract
+from tools.render import render
 from tools.rewrite import rewrite
 from tools.seo import seo
-from tools.render import render
 from tools.verify import verify
 
 logger = logging.getLogger("crawler.reducer")
@@ -27,9 +25,11 @@ logger = logging.getLogger("crawler.reducer")
 MAX_FIX_ATTEMPTS = 2
 
 
-def crawl(state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: Optional[str] = None) -> CrawlState:
+def crawl(
+    state: CrawlState, knowledge: Knowledge, llm: LLM, state_path: str | None = None
+) -> CrawlState:
     """The complete crawl pipeline - Factor #12: stateless reducer.
-    
+
     Flow:
         extract -> rewrite -> seo -> render -> verify
                                               | fail

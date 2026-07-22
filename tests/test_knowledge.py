@@ -1,4 +1,5 @@
 """Tests for knowledge module - site patterns and failure reports."""
+
 import sys
 from pathlib import Path
 
@@ -10,8 +11,10 @@ from knowledge import Knowledge, SitePattern
 def test_record_site_pattern():
     knowledge = Knowledge()
     knowledge.record_site_pattern(
-        domain="youtube.com", extractor="youtube",
-        prompt="prompts/rewrite.md", quality=85,
+        domain="youtube.com",
+        extractor="youtube",
+        prompt="prompts/rewrite.md",
+        quality=85,
     )
     assert "youtube.com" in knowledge.site_patterns
     sp = knowledge.site_patterns["youtube.com"]
@@ -31,13 +34,16 @@ def test_record_site_pattern_updates_avg():
 
 def test_site_pattern_has_total_quality():
     """SitePattern should have total_quality accumulator."""
-    sp = SitePattern(extractor="web", best_prompt="p.md", avg_quality=80.0, sample_count=1, total_quality=80.0)
+    sp = SitePattern(
+        extractor="web", best_prompt="p.md", avg_quality=80.0, sample_count=1, total_quality=80.0
+    )
     assert sp.total_quality == 80.0
 
 
 def test_failure_report_field():
     """CrawlState should have failure_report field."""
     from state import make_state
+
     state = make_state("https://example.com", keyword="test")
     assert state.failure_report is None
     state.failure_report = {"url": "https://example.com", "error": "test"}
@@ -45,6 +51,7 @@ def test_failure_report_field():
 
 
 # --- Sprint 4: Knowledge self-evolution tests ---
+
 
 def test_get_best_strategy_enough_samples():
     """get_best_strategy returns (extractor, prompt) when sample_count >= 3."""
@@ -79,8 +86,11 @@ def test_get_best_strategy_no_extractor():
     """get_best_strategy returns None when extractor is empty."""
     k = Knowledge()
     k.site_patterns["empty.com"] = SitePattern(
-        extractor="", best_prompt="p.md", avg_quality=80.0,
-        sample_count=5, total_quality=400.0,
+        extractor="",
+        best_prompt="p.md",
+        avg_quality=80.0,
+        sample_count=5,
+        total_quality=400.0,
     )
     assert k.get_best_strategy("empty.com") is None
 
@@ -122,6 +132,7 @@ def test_should_skip_unknown_url():
 def test_preferred_extractor_field():
     """CrawlState has preferred_extractor field."""
     from state import make_state
+
     state = make_state("https://example.com", keyword="test")
     assert state.preferred_extractor == ""
     state.preferred_extractor = "web"

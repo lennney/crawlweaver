@@ -1,3 +1,12 @@
+---
+type: Learnings
+title: crawlweaver LEARNINGS
+timestamp: '2026-07-20T23:35:20+08:00'
+description: 技术教训和踩坑记录
+tags:
+- crawlweaver
+- learnings
+---
 # LEARNINGS.md
 
 > Agent 每次踩坑后自动追加，不需要手动维护。

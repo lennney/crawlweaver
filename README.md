@@ -1,3 +1,12 @@
+---
+type: Readme
+title: CrawlWeaver
+timestamp: '2026-07-20T23:35:20+08:00'
+description: URL → 提取 → AI 改写 → SEO 优化 → 渲染 HTML → 自检评分
+tags:
+- crawlweaver
+- readme
+---
 # 🕷️ CrawlWeaver
 
 **AI 内容工厂 — 多源爬取 × SEO 改写 × 知识自进化**

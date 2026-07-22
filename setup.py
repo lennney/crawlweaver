@@ -52,12 +52,12 @@ def cmd_setup(args):
 
     if choice == "1" or choice == "2":
         browser = "chrome" if choice == "1" else "firefox"
-        print(f"\n请在你的电脑上运行：")
+        print("\n请在你的电脑上运行：")
         print(f"  yt-dlp --cookies-from-browser {browser} --cookies yt_cookies.txt \\")
-        print(f"         'https://www.youtube.com' --skip-download")
-        print(f"\n然后上传到服务器：")
+        print("         'https://www.youtube.com' --skip-download")
+        print("\n然后上传到服务器：")
         print(f"  scp cookies.txt <user>@<server>:{COOKIES_PATH}")
-        print(f"\n上传完成后，运行: python cli.py setup --check")
+        print("\n上传完成后，运行: python cli.py setup --check")
     elif choice == "3":
         path = input("输入 cookies 文件路径: ").strip()
         src = Path(path).expanduser()
@@ -65,6 +65,7 @@ def cmd_setup(args):
             print(f"文件不存在: {src}")
             sys.exit(1)
         import shutil
+
         shutil.copy2(src, COOKIES_PATH)
         print(f"已复制到 {COOKIES_PATH}")
         check_cookies()
@@ -73,6 +74,7 @@ def cmd_setup(args):
         src = Path(choice).expanduser()
         if src.exists():
             import shutil
+
             shutil.copy2(src, COOKIES_PATH)
             print(f"已复制到 {COOKIES_PATH}")
             check_cookies()
@@ -105,9 +107,18 @@ def check_cookies() -> bool:
     print(f"🔍 测试 cookies: {found}")
     try:
         result = subprocess.run(
-            ["yt-dlp", "--cookies", str(found), "--skip-download",
-             "--print", "title", "https://www.youtube.com/watch?v=aircAruvnKk"],
-            capture_output=True, text=True, timeout=30,
+            [
+                "yt-dlp",
+                "--cookies",
+                str(found),
+                "--skip-download",
+                "--print",
+                "title",
+                "https://www.youtube.com/watch?v=aircAruvnKk",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode == 0 and result.stdout.strip():
             title = result.stdout.strip()
@@ -116,12 +127,13 @@ def check_cookies() -> bool:
             # Copy to v2 location if not already there
             if found != COOKIES_PATH:
                 import shutil
+
                 shutil.copy2(found, COOKIES_PATH)
                 print(f"   已复制到 {COOKIES_PATH}")
 
             return True
         else:
-            print(f"❌ Cookies 无效或已过期")
+            print("❌ Cookies 无效或已过期")
             print(f"   错误: {result.stderr[:200]}")
             return False
     except Exception as e:

@@ -1,3 +1,12 @@
+---
+type: AgentInstruction
+title: CrawlWeaver — 自进化 AI 爬虫
+timestamp: '2026-07-20T23:35:20+08:00'
+description: URL → 提取 → AI 改写 → SEO 优化 → 渲染 HTML → 自检评分
+tags:
+- crawlweaver
+- agentinstruction
+---
 # CrawlWeaver — Agent Instructions
 
 > 自进化 AI 爬虫：URL → 提取 → AI 改写 → SEO 优化 → 渲染 HTML → 自检评分

@@ -1,7 +1,9 @@
 """Tests for task queue — concurrency control and job tracking."""
-import time
+
 import threading
-from task_queue import TaskQueue, JobStatus
+import time
+
+from task_queue import JobStatus, TaskQueue
 
 
 def test_job_status_enum():

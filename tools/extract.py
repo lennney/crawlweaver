@@ -8,7 +8,6 @@ import logging
 import re
 import subprocess
 from pathlib import Path
-from typing import Any
 
 from state import CrawlState, Source, Step
 
@@ -34,12 +33,15 @@ def extract(state: CrawlState) -> CrawlState:
             _extract_reddit(state)
         elif state.source == Source.TWITTER:
             from tools.extractors.twitter import extract_twitter
+
             extract_twitter(state)
         elif state.source == Source.WECHAT:
             from tools.extractors.wechat import extract_wechat
+
             extract_wechat(state)
         elif state.source == Source.ZHIHU:
             from tools.extractors.zhihu import extract_zhihu
+
             extract_zhihu(state)
         else:
             raise ValueError(f"Unknown source: {state.source}")
@@ -103,9 +105,7 @@ def _extract_youtube(state: CrawlState):
         # New API (v1.x): api.fetch(video_id, languages=[...])
         # Returns iterable of FetchedTranscriptSnippet with .text attribute
         transcript = api.fetch(video_id, languages=["en", "zh-Hans", "zh"])
-        state.raw_text = " ".join(
-            snippet.text for snippet in transcript if snippet.text
-        )
+        state.raw_text = " ".join(snippet.text for snippet in transcript if snippet.text)
         state.title = f"YouTube Video {video_id}"
         state.source_metadata = {"video_id": video_id, "method": "transcript_api"}
         return
@@ -114,7 +114,6 @@ def _extract_youtube(state: CrawlState):
 
     # Strategy 2: yt-dlp with cookies
     try:
-        import glob as _glob
         # Look for cookies file — multiple possible locations
         cookies_path = None
         for candidate in [
@@ -127,9 +126,15 @@ def _extract_youtube(state: CrawlState):
                 break
 
         cmd = [
-            "yt-dlp", "--skip-download", "--write-auto-sub",
-            "--sub-lang", "en,zh", "--sub-format", "vtt/best",
-            "-o", "/tmp/yt_%(id)s",
+            "yt-dlp",
+            "--skip-download",
+            "--write-auto-sub",
+            "--sub-lang",
+            "en,zh",
+            "--sub-format",
+            "vtt/best",
+            "-o",
+            "/tmp/yt_%(id)s",
         ]
         if cookies_path:
             cmd.extend(["--cookies", cookies_path])
@@ -143,6 +148,7 @@ def _extract_youtube(state: CrawlState):
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         video_id = _youtube_id(url)
         import glob
+
         subs = glob.glob(f"/tmp/yt_{video_id}*.vtt") + glob.glob(f"/tmp/yt_{video_id}*.txt")
         if subs:
             raw = Path(subs[0]).read_text(encoding="utf-8")
@@ -151,7 +157,11 @@ def _extract_youtube(state: CrawlState):
                 raw = _parse_vtt(raw)
             state.raw_text = raw
             state.title = f"YouTube Video {video_id}"
-            state.source_metadata = {"video_id": video_id, "method": "yt-dlp", "cookies": bool(cookies_path)}
+            state.source_metadata = {
+                "video_id": video_id,
+                "method": "yt-dlp",
+                "cookies": bool(cookies_path),
+            }
             return
         else:
             logger.warning(f"yt-dlp produced no subtitles. stderr: {result.stderr[:200]}")
@@ -168,7 +178,7 @@ def _extract_web(state: CrawlState):
 
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     resp = requests.get(state.url, headers=headers, timeout=30)
     resp.raise_for_status()
@@ -230,7 +240,7 @@ def _youtube_id(url: str) -> str:
 
 def _parse_vtt(vtt: str) -> str:
     """Extract plain text from WebVTT subtitle format.
-    
+
     Strips: WEBVTT header, timestamps, positioning tags, duplicate lines.
     """
     lines = vtt.split("\n")
@@ -239,7 +249,12 @@ def _parse_vtt(vtt: str) -> str:
     for line in lines:
         line = line.strip()
         # Skip header, empty lines, timestamps, positioning
-        if not line or line.startswith("WEBVTT") or line.startswith("Kind:") or line.startswith("Language:"):
+        if (
+            not line
+            or line.startswith("WEBVTT")
+            or line.startswith("Kind:")
+            or line.startswith("Language:")
+        ):
             continue
         if re.match(r"^\d{2}:\d{2}", line):
             continue

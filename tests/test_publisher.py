@@ -1,6 +1,5 @@
 """Tests for static site publisher."""
-import tempfile
-from pathlib import Path
+
 from publisher import generate_site
 
 
@@ -33,7 +32,9 @@ def test_generate_rss(tmp_path):
 
     site_dir = tmp_path / "site"
     site_dir.mkdir()
-    generate_rss(output_dir=output_dir, site_dir=site_dir, title="Feed", base_url="https://example.com")
+    generate_rss(
+        output_dir=output_dir, site_dir=site_dir, title="Feed", base_url="https://example.com"
+    )
 
     rss_path = site_dir / "feed.xml"
     assert rss_path.exists()

@@ -1,4 +1,5 @@
 """Static site publisher — generate index + RSS from output/ articles."""
+
 import re
 from datetime import datetime
 from html import escape
@@ -40,9 +41,14 @@ def generate_site(output_dir: Path, site_dir: Path, title: str = "AI Content Hub
     for a in articles:
         fname = escape(a["file"])
         atitle = escape(a["title"])
-        index_html += f'            <a href="{fname}" class="block bg-gray-900 hover:bg-gray-800 rounded-lg p-4 transition-colors">\n'
-        index_html += f'                <h2 class="text-xl font-semibold text-blue-400">{atitle}</h2>\n'
-        index_html += f'            </a>\n'
+        index_html += (
+            f'            <a href="{fname}" '
+            f'class="block bg-gray-900 hover:bg-gray-800 rounded-lg p-4 transition-colors">\n'
+        )
+        index_html += (
+            f'                <h2 class="text-xl font-semibold text-blue-400">{atitle}</h2>\n'
+        )
+        index_html += "            </a>\n"
 
     index_html += """        </div>
         <footer class="mt-12 text-gray-500 text-sm">
@@ -56,10 +62,12 @@ def generate_site(output_dir: Path, site_dir: Path, title: str = "AI Content Hub
     generate_rss(output_dir, site_dir, title)
 
 
-def generate_rss(output_dir: Path, site_dir: Path, title: str = "AI Content Hub",
-                 base_url: str | None = None):
+def generate_rss(
+    output_dir: Path, site_dir: Path, title: str = "AI Content Hub", base_url: str | None = None
+):
     """Generate RSS 2.0 feed."""
     import os
+
     if base_url is None:
         base_url = os.environ.get("CRAWLER_BASE_URL", "https://example.com")
     rss = Element("rss", version="2.0")
@@ -67,7 +75,9 @@ def generate_rss(output_dir: Path, site_dir: Path, title: str = "AI Content Hub"
     SubElement(channel, "title").text = title
     SubElement(channel, "link").text = base_url
     SubElement(channel, "description").text = f"{title} — AI-generated content"
-    SubElement(channel, "lastBuildDate").text = datetime.now().strftime("%a, %d %b %Y %H:%M:%S +0000")
+    SubElement(channel, "lastBuildDate").text = datetime.now().strftime(
+        "%a, %d %b %Y %H:%M:%S +0000"
+    )
 
     for html_file in sorted(output_dir.glob("*.html"), reverse=True)[:20]:
         content = html_file.read_text(encoding="utf-8")

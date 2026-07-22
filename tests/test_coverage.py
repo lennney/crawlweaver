@@ -1,5 +1,6 @@
 """Tests for keyword coverage tracking."""
-from knowledge import Knowledge, KeywordCoverage
+
+from knowledge import Knowledge
 
 
 def test_record_keyword_coverage():
@@ -45,8 +46,10 @@ def test_coverage_not_duplicated():
 
 def test_coverage_json_roundtrip():
     """Coverage should survive JSON serialization."""
-    import tempfile, os
-    from knowledge import save_knowledge, load_knowledge
+    import os
+    import tempfile
+
+    from knowledge import load_knowledge, save_knowledge
 
     k = Knowledge()
     k.record_coverage("test", "https://a.com", score=80)

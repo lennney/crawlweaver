@@ -6,15 +6,15 @@ For the actual extractors, we test with mocked responses.
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state import make_state, Source
+from state import Source, make_state
 from tools.extract import detect_source, extract
 
-
 # --- detect_source tests ---
+
 
 def test_detect_youtube():
     assert detect_source("https://www.youtube.com/watch?v=abc123") == "youtube"
@@ -50,6 +50,7 @@ def test_detect_web_fallback():
 
 # --- Source enum tests ---
 
+
 def test_source_enum_new_values():
     """Sprint 5: New source types exist in enum."""
     assert Source.TWITTER.value == "twitter"
@@ -66,13 +67,16 @@ def test_source_from_string():
 
 # --- Extract routing tests ---
 
+
 def test_extract_routes_twitter():
     """extract() should call Twitter extractor for Source.TWITTER."""
     state = make_state("https://twitter.com/user/status/123", source="twitter", keyword="test")
 
     mock_fn = MagicMock()
-    with patch.dict("sys.modules", {"tools.extractors.twitter": MagicMock(extract_twitter=mock_fn)}):
-        result = extract(state)
+    with patch.dict(
+        "sys.modules", {"tools.extractors.twitter": MagicMock(extract_twitter=mock_fn)}
+    ):
+        extract(state)
         mock_fn.assert_called_once()
 
 
@@ -82,7 +86,7 @@ def test_extract_routes_wechat():
 
     mock_fn = MagicMock()
     with patch.dict("sys.modules", {"tools.extractors.wechat": MagicMock(extract_wechat=mock_fn)}):
-        result = extract(state)
+        extract(state)
         mock_fn.assert_called_once()
 
 
@@ -92,11 +96,12 @@ def test_extract_routes_zhihu():
 
     mock_fn = MagicMock()
     with patch.dict("sys.modules", {"tools.extractors.zhihu": MagicMock(extract_zhihu=mock_fn)}):
-        result = extract(state)
+        extract(state)
         mock_fn.assert_called_once()
 
 
 # --- Twitter extractor unit tests ---
+
 
 def test_twitter_extract_tweet_id():
     """Tweet ID extraction from various URL formats."""
@@ -132,6 +137,7 @@ def test_twitter_extract_via_oembed():
 
 
 # --- WeChat extractor unit tests ---
+
 
 def test_wechat_extract_basic():
     """WeChat extractor should parse article from HTML."""
@@ -182,9 +188,10 @@ def test_wechat_rejects_non_wechat_url():
 
 # --- Zhihu extractor unit tests ---
 
+
 def test_zhihu_url_detection():
     """Zhihu URL pattern detection."""
-    from tools.extractors.zhihu import _is_article_url, _is_answer_url
+    from tools.extractors.zhihu import _is_answer_url, _is_article_url
 
     assert _is_article_url("https://zhuanlan.zhihu.com/p/123456")
     assert _is_article_url("https://www.zhihu.com/p/123456")

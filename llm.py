@@ -4,17 +4,18 @@ Factor #2: Own your prompts (caller provides system/user prompts).
 Factor #3: Own your context window (caller decides what goes in).
 """
 
-from dataclasses import dataclass
 import hashlib
 import json
 import logging
 import os
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(Path(__file__).parent / ".env")
 except ImportError:
     pass
@@ -46,7 +47,9 @@ class CostRecord:
         out = usage.get("completion_tokens", 0)
         pricing = PRICING.get(model, {"input": 0, "output": 0})
         cost = (inp * pricing["input"] + out * pricing["output"]) / 1_000_000
-        return cls(step=step, input_tokens=inp, output_tokens=out, model=model, cost_usd=round(cost, 6))
+        return cls(
+            step=step, input_tokens=inp, output_tokens=out, model=model, cost_usd=round(cost, 6)
+        )
 
 
 _cache_dir = Path(__file__).parent / "cache" / "llm"
@@ -115,13 +118,14 @@ def cache_set(step: str, text: str, result: Any):
     # Disk cache (persistence across restarts)
     _cache_dir.mkdir(parents=True, exist_ok=True)
     p = _cache_dir / f"{key}.json"
-    p.write_text(json.dumps({"ts": time.time(), "result": result}, ensure_ascii=False),
-                 encoding="utf-8")
+    p.write_text(
+        json.dumps({"ts": time.time(), "result": result}, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 class LLM:
     """Minimal LLM client with fallback chain: DeepSeek → Ollama.
-    
+
     Usage:
         llm = LLM()
         result = llm.call("You are a writer", "Write about X")
@@ -147,7 +151,9 @@ class LLM:
                 logger.debug(f"Cache hit for {cache_step}")
                 return cached
 
-        result = self._call_with_fallback(system, user, max_tokens, temperature, cache_step or "unknown")
+        result = self._call_with_fallback(
+            system, user, max_tokens, temperature, cache_step or "unknown"
+        )
 
         # Cache store
         if cache_step and cache_input:
@@ -155,7 +161,9 @@ class LLM:
 
         return result
 
-    def _call_with_fallback(self, system: str, user: str, max_tokens: int, temperature: float, step: str = "unknown") -> str:
+    def _call_with_fallback(
+        self, system: str, user: str, max_tokens: int, temperature: float, step: str = "unknown"
+    ) -> str:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -172,21 +180,26 @@ class LLM:
                 try:
                     client = self._get_client(api_key, base_url)
                     resp = client.chat.completions.create(
-                        model=model, messages=messages,
-                        max_tokens=retry_max_tokens, temperature=temperature,
+                        model=model,
+                        messages=messages,
+                        max_tokens=retry_max_tokens,
+                        temperature=temperature,
                         extra_body={"thinking": {"type": "disabled"}},
                     )
                     usage = resp.usage
                     if usage:
                         self.last_cost = CostRecord.from_usage(
                             step=step,
-                            usage={"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens},
+                            usage={
+                                "prompt_tokens": usage.prompt_tokens,
+                                "completion_tokens": usage.completion_tokens,
+                            },
                             model=model,
                         )
                     # Get content: check both content and reasoning_content
                     msg = resp.choices[0].message
                     content = (msg.content or "").strip()
-                    
+
                     # If content is empty but reasoning exists, the model
                     # spent all tokens on reasoning. Retry with 2x budget.
                     if not content:
@@ -198,14 +211,14 @@ class LLM:
                                 f"(reasoning={len(str(reasoning))} chars). "
                                 f"Retrying with max_tokens={retry_max_tokens}"
                             )
-                            time.sleep(2 ** attempt)
+                            time.sleep(2**attempt)
                             continue
                     return content
 
                 except Exception as e:
-                    logger.warning(f"DeepSeek attempt {attempt+1}/3 failed: {e}")
+                    logger.warning(f"DeepSeek attempt {attempt + 1}/3 failed: {e}")
                     if attempt < 2:
-                        time.sleep(2 ** attempt)
+                        time.sleep(2**attempt)
                     else:
                         logger.info("DeepSeek exhausted, trying Ollama")
 
@@ -217,19 +230,24 @@ class LLM:
             try:
                 client = self._get_client("ollama", f"{ollama_url}/v1")
                 resp = client.chat.completions.create(
-                    model=ollama_model, messages=messages,
-                    max_tokens=max_tokens, temperature=temperature,
+                    model=ollama_model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
                 )
                 usage = resp.usage
                 if usage:
                     self.last_cost = CostRecord.from_usage(
                         step=step,
-                        usage={"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens},
+                        usage={
+                            "prompt_tokens": usage.prompt_tokens,
+                            "completion_tokens": usage.completion_tokens,
+                        },
                         model=ollama_model,
                     )
                 return resp.choices[0].message.content.strip()
             except Exception as e:
-                logger.warning(f"Ollama attempt {attempt+1}/2 failed: {e}")
+                logger.warning(f"Ollama attempt {attempt + 1}/2 failed: {e}")
                 if attempt < 1:
                     time.sleep(1)
                 else:
@@ -239,5 +257,6 @@ class LLM:
         cache_key = f"{api_key[:8]}::{base_url}"
         if cache_key not in _clients:
             from openai import OpenAI
+
             _clients[cache_key] = OpenAI(api_key=api_key, base_url=base_url, timeout=self.timeout)
         return _clients[cache_key]

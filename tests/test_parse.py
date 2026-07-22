@@ -1,10 +1,12 @@
 """Tests for shared JSON parse utility."""
+
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
+
 from tools.parse import parse_json, parse_llm_output
 
 

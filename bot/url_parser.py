@@ -4,17 +4,16 @@ Factor #4: Tool is just structured output from deterministic code + LLM fallback
 """
 
 import re
-from urllib.parse import urlparse
 from dataclasses import dataclass
-from typing import Optional
+from urllib.parse import urlparse
 
 
 @dataclass
 class URLInfo:
-    source: str          # youtube / web / reddit / twitter / wechat / zhihu
-    keyword: str         # AI-guessed keyword or empty
-    content_type: str    # Beginner Guide / Product / News / etc.
-    confidence: float    # 0.0 - 1.0
+    source: str  # youtube / web / reddit / twitter / wechat / zhihu
+    keyword: str  # AI-guessed keyword or empty
+    content_type: str  # Beginner Guide / Product / News / etc.
+    confidence: float  # 0.0 - 1.0
 
 
 SOURCE_PATTERNS = [
@@ -26,7 +25,7 @@ SOURCE_PATTERNS = [
 ]
 
 
-def _match_source(url: str) -> Optional[str]:
+def _match_source(url: str) -> str | None:
     """规则匹配来源 — 覆盖 80% 的 URL."""
     url_lower = url.lower()
     for source, patterns in SOURCE_PATTERNS:
@@ -70,8 +69,9 @@ def parse_url(url: str, use_llm: bool = False) -> URLInfo:
     if use_llm and source == "web" and not keyword:
         # 兜底：用 LLM 从 URL 推断
         try:
-            from urllib.request import urlopen
             import html
+            from urllib.request import urlopen
+
             resp = urlopen(url, timeout=10)
             text = resp.read(4096).decode("utf-8", errors="ignore")
             title_match = re.search(r"<title>(.*?)</title>", text, re.I)

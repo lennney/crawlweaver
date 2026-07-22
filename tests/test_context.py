@@ -1,15 +1,20 @@
 """Tests for context module — constants and context building."""
+
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from context import (
-    MAX_SOURCE_CHARS, MAX_ARTICLE_CHARS, MAX_ARTICLE_PREVIEW_CHARS,
-    build_rewrite_context, build_seo_context, build_verify_context,
+    MAX_ARTICLE_CHARS,
+    MAX_ARTICLE_PREVIEW_CHARS,
+    MAX_SOURCE_CHARS,
+    build_rewrite_context,
+    build_seo_context,
+    build_verify_context,
 )
-from state import make_state
 from knowledge import Knowledge
+from state import make_state
 
 
 def test_constants_exist():

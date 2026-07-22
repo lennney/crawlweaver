@@ -4,8 +4,6 @@
 参考: https://open.feishu.cn/document/uAjLw4CM/ukzMukzMukzM/feishu-cards/card-components
 """
 
-from typing import Any
-
 
 def confirm_card(url: str, source: str, keyword: str, confidence: float) -> dict:
     """确认爬取卡片 — 带确认/取消按钮."""
@@ -28,16 +26,36 @@ def confirm_card(url: str, source: str, keyword: str, confidence: float) -> dict
             {
                 "tag": "div",
                 "fields": [
-                    {"is_short": False, "text": {"tag": "lark_md", "content": f"**来源:** {source}"}},
-                    {"is_short": False, "text": {"tag": "lark_md", "content": f"**关键词:** {keyword or '（自动识别中）'}"}},
-                    {"is_short": False, "text": {"tag": "lark_md", "content": f"**URL:** {url[:80]}{'...' if len(url) > 80 else ''}"}},
-                    {"is_short": False, "text": {"tag": "lark_md", "content": f"**识别置信度:** {confidence:.0%}"}},
+                    {
+                        "is_short": False,
+                        "text": {"tag": "lark_md", "content": f"**来源:** {source}"},
+                    },
+                    {
+                        "is_short": False,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": f"**关键词:** {keyword or '（自动识别中）'}",
+                        },
+                    },
+                    {
+                        "is_short": False,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": f"**URL:** {url[:80]}{'...' if len(url) > 80 else ''}",
+                        },
+                    },
+                    {
+                        "is_short": False,
+                        "text": {"tag": "lark_md", "content": f"**识别置信度:** {confidence:.0%}"},
+                    },
                 ],
             },
             {"tag": "hr"},
             {
                 "tag": "note",
-                "elements": [{"tag": "plain_text", "content": "点击确认后开始爬取，过程约 1-3 分钟"}],
+                "elements": [
+                    {"tag": "plain_text", "content": "点击确认后开始爬取，过程约 1-3 分钟"}
+                ],
             },
         ],
     }
@@ -94,8 +112,17 @@ def result_card(url: str, title: str, word_count: int, score: int, result_url: s
             {
                 "tag": "div",
                 "fields": [
-                    {"is_short": True, "text": {"tag": "lark_md", "content": f"📝 **{word_count}** 字"}},
-                    {"is_short": True, "text": {"tag": "lark_md", "content": f"{score_emoji} 质量 **{score}**/100"}},
+                    {
+                        "is_short": True,
+                        "text": {"tag": "lark_md", "content": f"📝 **{word_count}** 字"},
+                    },
+                    {
+                        "is_short": True,
+                        "text": {
+                            "tag": "lark_md",
+                            "content": f"{score_emoji} 质量 **{score}**/100",
+                        },
+                    },
                 ],
             },
             {"tag": "hr"},
@@ -145,7 +172,10 @@ def timeout_card(url: str, task_id: str) -> dict:
             "template": "yellow",
         },
         "elements": [
-            {"tag": "markdown", "content": f"**{url[:60]}**\n\n爬取超过 5 分钟未完成，可能页面较大或网络较慢。"},
+            {
+                "tag": "markdown",
+                "content": f"**{url[:60]}**\n\n爬取超过 5 分钟未完成，可能页面较大或网络较慢。",
+            },
             {"tag": "hr"},
             {
                 "tag": "action",
